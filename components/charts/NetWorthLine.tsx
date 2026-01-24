@@ -1,5 +1,6 @@
-import { StyleSheet, View, Text } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { LineChart } from 'react-native-gifted-charts'
+import { Text } from 'react-native-paper'
 import { theme } from '../../constants/theme'
 
 type Point = {
@@ -68,20 +69,26 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.card,
     paddingVertical: 20,
     paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.shadows.card,
   },
   axis: {
     color: theme.colors.mutedLight,
     fontSize: 10,
+    fontFamily: theme.fonts.body.regular,
   },
   tooltip: {
     backgroundColor: theme.colors.surface,
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   tooltipText: {
-    color: theme.colors.text,
+    color: theme.colors.ink,
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: theme.fonts.body.medium,
   },
 })

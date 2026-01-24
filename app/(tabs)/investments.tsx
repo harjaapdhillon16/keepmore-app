@@ -30,7 +30,7 @@ const holdings = [
 
 export default function InvestmentsScreen() {
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -85,47 +85,65 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   summaryCard: {
-    backgroundColor: theme.colors.ink,
+    backgroundColor: theme.colors.surface,
     padding: 20,
     borderRadius: theme.radii.cardLarge,
     gap: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.shadows.card,
   },
   summaryLabel: {
-    color: '#cbd5f5',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    color: theme.colors.mutedLight,
   },
   summaryValue: {
-    color: '#ffffff',
+    color: theme.colors.ink,
     fontSize: 28,
-    fontWeight: '700',
+    fontFamily: theme.fonts.display.regular,
   },
   summaryChange: {
-    color: theme.colors.accentSoft,
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 13,
+    color: theme.colors.accent,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: theme.fonts.display.regular,
+    fontSize: 20,
     color: theme.colors.ink,
   },
   grid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
   accountCard: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: 140,
     backgroundColor: theme.colors.surface,
     padding: 12,
     borderRadius: theme.radii.card,
     gap: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
   accountName: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
     color: theme.colors.mutedLight,
   },
   accountValue: {
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 15,
     color: theme.colors.ink,
   },
   accountChange: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
     color: theme.colors.accent,
   },
   holdingCard: {
@@ -133,6 +151,8 @@ const styles = StyleSheet.create({
     padding: theme.spacing.card,
     borderRadius: theme.radii.card,
     gap: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
   holdingHeader: {
@@ -140,20 +160,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   holdingSymbol: {
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 14,
     color: theme.colors.ink,
   },
   holdingValue: {
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 14,
     color: theme.colors.ink,
   },
   holdingName: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 12,
     color: theme.colors.muted,
   },
   holdingMeta: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 12,
     color: theme.colors.mutedLight,
   },
   holdingChange: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
     color: theme.colors.accent,
   },
 })

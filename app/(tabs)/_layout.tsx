@@ -18,11 +18,17 @@ export default function TabsLayout() {
 
         return {
           headerShown: false,
-          tabBarActiveTintColor: theme.colors.accent,
+          tabBarActiveTintColor: theme.colors.primary,
           tabBarInactiveTintColor: theme.colors.mutedLight,
           tabBarStyle: {
             backgroundColor: theme.colors.surface,
             borderTopColor: theme.colors.border,
+            borderTopWidth: 1,
+            paddingTop: 6,
+          },
+          tabBarLabelStyle: {
+            fontFamily: theme.fonts.body.medium,
+            fontSize: 11,
           },
           tabBarIcon: ({ color, size }) => (
             <Ionicons

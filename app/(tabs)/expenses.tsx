@@ -3,6 +3,8 @@ import { Chip, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
 
+const filters = ['All', 'This month', 'Last month', 'Custom']
+
 const groups = [
   {
     label: 'Today',
@@ -23,7 +25,7 @@ const groups = [
 
 export default function ExpensesScreen() {
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -31,10 +33,19 @@ export default function ExpensesScreen() {
       >
         <Text style={styles.title}>Expenses</Text>
         <View style={styles.filters}>
-          <Chip selected>All</Chip>
-          <Chip>This month</Chip>
-          <Chip>Last month</Chip>
-          <Chip>Custom</Chip>
+          {filters.map((label) => {
+            const isSelected = label === 'All'
+            return (
+              <Chip
+                key={label}
+                selected={isSelected}
+                style={[styles.chip, isSelected && styles.chipSelected]}
+                textStyle={[styles.chipText, isSelected && styles.chipTextSelected]}
+              >
+                {label}
+              </Chip>
+            )
+          })}
         </View>
 
         {groups.map((group) => (
@@ -69,8 +80,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontFamily: theme.fonts.display.regular,
+    fontSize: 24,
     color: theme.colors.ink,
   },
   filters: {
@@ -78,10 +89,28 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  chip: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderWidth: 1,
+  },
+  chipSelected: {
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: theme.colors.accentSoft,
+  },
+  chipText: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
+    color: theme.colors.muted,
+  },
+  chipTextSelected: {
+    color: theme.colors.accentStrong,
+  },
   group: {
     gap: 12,
   },
   groupLabel: {
+    fontFamily: theme.fonts.body.medium,
     fontSize: 14,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
@@ -91,22 +120,27 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.card,
     borderRadius: theme.radii.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     ...theme.shadows.card,
   },
   merchant: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 15,
     color: theme.colors.ink,
   },
   category: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 12,
     color: theme.colors.mutedLight,
     marginTop: 4,
   },
   amount: {
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 14,
     color: theme.colors.danger,
   },
 })

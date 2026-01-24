@@ -10,6 +10,7 @@ import {
   type LinkSuccess,
 } from 'react-native-plaid-link-sdk'
 import { apiUrl } from '../constants/api'
+import { useAuth } from '@/contexts/AuthContext'
 
 type PlaidLinkState = {
   linkToken: string | null
@@ -52,6 +53,7 @@ export function usePlaid() {
     linkToken: null,
     isLoading: false,
   })
+  const { user } = useAuth()
 
   const createLinkToken = useCallback(async (userId: string) => {
     setState((prev) => ({ ...prev, isLoading: true, error: undefined }))
@@ -88,7 +90,7 @@ export function usePlaid() {
     const response = await fetch(apiUrl('/api/plaid/exchange-token'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ publicToken }),
+      body: JSON.stringify({ publicToken, user:user?.id }),
     })
     const payload = await response.json().catch(() => null)
     if (!response.ok) {
@@ -100,7 +102,7 @@ export function usePlaid() {
       throw new Error('Missing Plaid access token in response')
     }
     return { accessToken, itemId }
-  }, [])
+  }, [user])
 
   const openLinkFlow = useCallback(
     async ({ userId, onSuccess, onExit }: OpenLinkOptions) => {

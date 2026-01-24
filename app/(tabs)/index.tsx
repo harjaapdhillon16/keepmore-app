@@ -82,13 +82,20 @@ const formatCurrency = (value: number) => `$${value.toLocaleString('en-US')}`
 
 export default function HomeScreen() {
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Your finances</Text>
+          <Text style={styles.headerSubtitle}>
+            Key trends and recent activity in one place.
+          </Text>
+        </View>
+
         <NetWorthCard amount="$47,382" changeLabel="+$2,147 this month" />
 
         <View style={styles.card}>
@@ -200,21 +207,39 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: theme.spacing.page,
-    gap: 16,
+    gap: 20,
+  },
+  header: {
+    gap: 4,
+  },
+  headerTitle: {
+    fontFamily: theme.fonts.display.regular,
+    fontSize: 26,
+    color: theme.colors.ink,
+  },
+  headerSubtitle: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 14,
+    color: theme.colors.muted,
   },
   card: {
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.card,
     borderRadius: theme.radii.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
   cardTitle: {
-    color: theme.colors.accent,
-    fontWeight: '600',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    color: theme.colors.mutedLight,
   },
   cardValue: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontFamily: theme.fonts.display.regular,
+    fontSize: 26,
     marginTop: 6,
     color: theme.colors.ink,
   },
@@ -222,18 +247,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: theme.fonts.display.regular,
+    fontSize: 20,
     color: theme.colors.ink,
   },
   actions: {
-    gap: 12,
+    gap: 10,
   },
   dataCard: {
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.card,
     borderRadius: theme.radii.card,
     gap: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
   dataGrid: {
@@ -245,7 +272,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     minWidth: 140,
     backgroundColor: theme.colors.surfaceAlt,
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -274,16 +301,17 @@ const styles = StyleSheet.create({
   },
   dataLabel: {
     color: theme.colors.muted,
-    fontWeight: '600',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
   },
   dataValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 16,
     color: theme.colors.ink,
   },
   dataValueStrong: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 16,
     color: theme.colors.ink,
   },
   metricGroup: {
@@ -296,19 +324,22 @@ const styles = StyleSheet.create({
     minWidth: 90,
   },
   metricLabel: {
-    fontSize: 11,
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 10,
     textTransform: 'uppercase',
-    letterSpacing: 1.1,
+    letterSpacing: 1,
     color: theme.colors.mutedLight,
   },
   metricValuePositive: {
     marginTop: 4,
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 14,
     color: theme.colors.accentStrong,
   },
   metricValueNegative: {
     marginTop: 4,
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 14,
     color: theme.colors.danger,
   },
 })

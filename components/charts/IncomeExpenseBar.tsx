@@ -33,7 +33,11 @@ export default function IncomeExpenseBar({ data }: IncomeExpenseBarProps) {
     frontColor: theme.colors.accent,
     spacing: 4,
     labelWidth: 40,
-    labelTextStyle: { color: theme.colors.mutedLight, fontSize: 10 },
+    labelTextStyle: {
+      color: theme.colors.mutedLight,
+      fontSize: 10,
+      fontFamily: theme.fonts.body.regular,
+    },
   }))
 
   const expensesData = Object.values(groupedData).map(item => ({
@@ -56,7 +60,11 @@ export default function IncomeExpenseBar({ data }: IncomeExpenseBarProps) {
         yAxisThickness={1}
         xAxisColor={theme.colors.border}
         yAxisColor={theme.colors.border}
-        yAxisTextStyle={{ color: theme.colors.mutedLight, fontSize: 10 }}
+        yAxisTextStyle={{
+          color: theme.colors.mutedLight,
+          fontSize: 10,
+          fontFamily: theme.fonts.body.regular,
+        }}
         noOfSections={4}
         maxValue={Math.max(...data.map(d => d.y)) * 1.2}
         rulesColor={theme.colors.border}
@@ -75,6 +83,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.card,
     paddingVertical: 8,
     paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
 })

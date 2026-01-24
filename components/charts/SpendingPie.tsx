@@ -1,5 +1,6 @@
-import { StyleSheet, View, Text } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { PieChart } from 'react-native-gifted-charts'
+import { Text } from 'react-native-paper'
 import { theme } from '../../constants/theme'
 
 type Slice = {
@@ -47,18 +48,22 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.card,
     paddingVertical: 24,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.shadows.card,
   },
   center: {
     alignItems: 'center',
   },
   total: {
     fontSize: 20,
-    fontWeight: '600',
-    color: theme.colors.text,
+    fontFamily: theme.fonts.display.regular,
+    color: theme.colors.ink,
   },
   sub: {
     marginTop: 4,
     fontSize: 12,
+    fontFamily: theme.fonts.body.regular,
     color: theme.colors.mutedLight,
   },
 })

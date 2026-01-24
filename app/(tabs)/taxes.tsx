@@ -34,7 +34,7 @@ const assistantFindings = [
 
 export default function TaxesScreen() {
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -60,7 +60,12 @@ export default function TaxesScreen() {
         <Text style={styles.sectionTitle}>Suggested prompts</Text>
         <View style={styles.promptRow}>
           {prompts.map((prompt) => (
-            <Chip key={prompt} onPress={() => {}}>
+            <Chip
+              key={prompt}
+              onPress={() => {}}
+              style={styles.promptChip}
+              textStyle={styles.promptChipText}
+            >
               {prompt}
             </Chip>
           ))}
@@ -109,16 +114,18 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontFamily: theme.fonts.display.regular,
+    fontSize: 24,
     color: theme.colors.ink,
   },
   subtitle: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 14,
     color: theme.colors.muted,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: theme.fonts.display.regular,
+    fontSize: 20,
     color: theme.colors.ink,
   },
   heroCard: {
@@ -126,14 +133,18 @@ const styles = StyleSheet.create({
     padding: theme.spacing.card,
     borderRadius: theme.radii.card,
     gap: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
   heroTitle: {
+    fontFamily: theme.fonts.body.medium,
     fontSize: 16,
-    fontWeight: '700',
     color: theme.colors.ink,
   },
   heroDetail: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 13,
     color: theme.colors.muted,
   },
   promptRow: {
@@ -141,10 +152,22 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
+  promptChip: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  promptChipText: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
+    color: theme.colors.muted,
+  },
   snapshotCard: {
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.card,
     borderRadius: theme.radii.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
   snapshotGrid: {
@@ -163,14 +186,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   snapshotLabel: {
-    fontSize: 11,
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 1.1,
     color: theme.colors.mutedLight,
   },
   snapshotValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 16,
     color: theme.colors.ink,
   },
   findingCard: {
@@ -178,13 +202,18 @@ const styles = StyleSheet.create({
     padding: theme.spacing.card,
     borderRadius: theme.radii.card,
     gap: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
   findingTitle: {
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 14,
     color: theme.colors.ink,
   },
   findingDetail: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 13,
     color: theme.colors.muted,
   },
 })

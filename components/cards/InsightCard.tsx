@@ -19,7 +19,7 @@ export default function InsightCard({
     <View style={styles.card}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>
-      <Button mode="text" compact onPress={onPress}>
+      <Button mode="text" compact onPress={onPress} labelStyle={styles.ctaLabel}>
         {cta}
       </Button>
     </View>
@@ -32,13 +32,23 @@ const styles = StyleSheet.create({
     padding: theme.spacing.card,
     borderRadius: theme.radii.card,
     gap: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
   title: {
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 15,
     color: theme.colors.ink,
   },
   description: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 13,
     color: theme.colors.muted,
+  },
+  ctaLabel: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 13,
+    color: theme.colors.accent,
   },
 })

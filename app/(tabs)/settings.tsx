@@ -59,7 +59,7 @@ const sections: { title: string; items: SettingsItem[] }[] = [
 
 export default function SettingsScreen() {
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -77,7 +77,7 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>Demo User</Text>
-              <Text style={styles.profileMeta}>demo@keepmore.app</Text>
+              <Text style={styles.profileMeta}>harjaap@primedepthlabs.com</Text>
             </View>
             <Ionicons
               name="chevron-forward"
@@ -143,11 +143,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   title: {
+    fontFamily: theme.fonts.display.regular,
     fontSize: 24,
-    fontWeight: '700',
     color: theme.colors.ink,
   },
   subtitle: {
+    fontFamily: theme.fonts.body.regular,
     fontSize: 14,
     color: theme.colors.muted,
   },
@@ -155,6 +156,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     padding: 16,
     borderRadius: theme.radii.cardLarge,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
   profileRow: {
@@ -174,20 +177,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileName: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 15,
     color: theme.colors.ink,
   },
   profileMeta: {
     marginTop: 2,
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 12,
     color: theme.colors.mutedLight,
   },
   section: {
     gap: 10,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     color: theme.colors.mutedLight,
@@ -196,6 +201,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radii.card,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
   row: {
@@ -226,7 +233,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.dangerSoft,
   },
   rowLabel: {
-    fontSize: 15,
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 14,
     color: theme.colors.ink,
   },
   rowLabelDanger: {
