@@ -1,39 +1,23 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useEffect, useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Pressable, StyleSheet, View } from 'react-native'
 import { ActivityIndicator, Text } from 'react-native-paper'
-import Purchases, { PACKAGE_TYPE, PurchasesPackage } from 'react-native-purchases'
+import Purchases, { PurchasesOffering } from 'react-native-purchases'
+import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
 
 const features = [
-  {
-    icon: 'chatbubble-ellipses',
-    title: 'Unlimited AI Questions',
-    detail: 'Ask anything about your spending and investments.',
-  },
-  {
-    icon: 'bar-chart',
-    title: 'Advanced Insights',
-    detail: 'Predictions, trends, and recommendations.',
-  },
-  {
-    icon: 'flag',
-    title: 'Goal Tracking',
-    detail: 'Track savings, budgets, and investment goals.',
-  },
-  {
-    icon: 'documents',
-    title: 'Full History',
-    detail: 'Access all transactions and account data.',
-  },
+  { icon: 'sparkles', title: 'Unlimited AI Questions', detail: 'Ask anything about finances' },
+  { icon: 'trending-up', title: 'Smart Analytics', detail: 'Track spending & savings' },
+  { icon: 'flag', title: 'Goal Tracking', detail: 'Budgets & investment goals' },
+  { icon: 'shield-checkmark', title: 'Secure & Private', detail: 'Bank-level encryption' },
 ]
 
 export default function PaywallScreen() {
   const router = useRouter()
-  const [packages, setPackages] = useState<PurchasesPackage[]>([])
-  const [selectedPackage, setSelectedPackage] = useState<PurchasesPackage | null>(null)
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,19 +27,17 @@ export default function PaywallScreen() {
     const loadOfferings = async () => {
       try {
         const offerings = await Purchases.getOfferings()
-        const available = offerings.current?.availablePackages ?? []
-        const preferred =
-          available.find((item) => item.packageType === PACKAGE_TYPE.ANNUAL) ??
-          available[0] ??
-          null
+        console.log('Offerings loaded:', JSON.stringify(offerings, null, 2))
+        
         if (isMounted) {
-          setPackages(available)
-          setSelectedPackage(preferred)
-          if (available.length === 0) {
-            setError('No subscription plans are available yet.')
+          if (offerings.current) {
+            setOffering(offerings.current)
+          } else {
+            setError('No subscription plans available.')
           }
         }
       } catch (err) {
+        console.error('Error loading offerings:', err)
         if (isMounted) {
           setError('Unable to load subscription options.')
         }
@@ -73,30 +55,46 @@ export default function PaywallScreen() {
     }
   }, [])
 
-  const selectedLabel = useMemo(() => {
-    if (!selectedPackage) return ''
-    const price = selectedPackage.product.priceString
-    const title = selectedPackage.product.title
-    return `${title} · ${price}`
-  }, [selectedPackage])
+  const handleStartTrial = async () => {
+    if (!offering || isPurchasing) return
 
-  const isPayDisabled = isLoading || !selectedPackage || isPurchasing
-
-  const handlePurchase = async () => {
-    if (!selectedPackage) return
     setIsPurchasing(true)
     setError(null)
+
     try {
-      const result = await Purchases.purchasePackage(selectedPackage)
-      if (result.customerInfo.entitlements.active.premium) {
-        router.replace('/(auth)/trial')
-        return
+      const paywallResult: PAYWALL_RESULT = await RevenueCatUI.presentPaywall({
+        offering,
+        
+      })
+
+      console.log('Paywall result:', paywallResult)
+
+      switch (paywallResult) {
+        case PAYWALL_RESULT.PURCHASED:
+        case PAYWALL_RESULT.RESTORED:
+          const customerInfo = await Purchases.getCustomerInfo()
+          if (customerInfo.entitlements.active.premium) {
+            router.replace('/(auth)/trial')
+          } else {
+            router.replace('/(tabs)')
+          }
+          break
+
+        case PAYWALL_RESULT.CANCELLED:
+          console.log('User cancelled the paywall')
+          break
+
+        case PAYWALL_RESULT.ERROR:
+          setError('Something went wrong. Please try again.')
+          break
+
+        case PAYWALL_RESULT.NOT_PRESENTED:
+          setError('Unable to show subscription options.')
+          break
       }
-      router.replace('/(tabs)')
     } catch (err: any) {
-      if (!err?.userCancelled) {
-        setError('Purchase failed. Please try again.')
-      }
+      console.error('Paywall error:', err)
+      setError('An unexpected error occurred.')
     } finally {
       setIsPurchasing(false)
     }
@@ -104,23 +102,19 @@ export default function PaywallScreen() {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.container}>
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Unlock Your Financial Copilot</Text>
-          <Text style={styles.subtitle}>
-            Start your 7-day free trial. Face ID to continue.
-          </Text>
+          <Text style={styles.title}>Premium Features</Text>
+          <Text style={styles.subtitle}>Unlock full access with a 7-day free trial</Text>
         </View>
 
-        <View style={styles.featureCard}>
+        {/* Features */}
+        <View style={styles.features}>
           {features.map((feature) => (
             <View key={feature.title} style={styles.featureRow}>
-              <View style={styles.featureIcon}>
-                <Ionicons name={feature.icon} size={16} color={theme.colors.accent} />
+              <View style={styles.iconCircle}>
+                <Ionicons name={feature.icon as any} size={18} color={theme.colors.accent} />
               </View>
               <View style={styles.featureText}>
                 <Text style={styles.featureTitle}>{feature.title}</Text>
@@ -130,64 +124,53 @@ export default function PaywallScreen() {
           ))}
         </View>
 
-        <View style={styles.payCard}>
-          <Text style={styles.payTitle}>Start 7-Day Free Trial</Text>
-          <Text style={styles.paySubtitle}>
-            Then $12.99/month or save with annual billing.
-          </Text>
-
-          {isLoading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={theme.colors.accent} />
-              <Text style={styles.loadingText}>Loading plans...</Text>
-            </View>
-          ) : (
-            <View style={styles.planList}>
-              {packages.map((item) => {
-                const isSelected = selectedPackage?.identifier === item.identifier
-                return (
-                  <Pressable
-                    key={item.identifier}
-                    style={[styles.planRow, isSelected && styles.planRowSelected]}
-                    onPress={() => setSelectedPackage(item)}
-                  >
-                    <View style={styles.planInfo}>
-                      <Text style={styles.planTitle}>{item.product.title}</Text>
-                      <Text style={styles.planMeta}>{item.product.priceString}</Text>
-                    </View>
-                    {isSelected ? (
-                      <Ionicons name="checkmark-circle" size={18} color={theme.colors.accent} />
-                    ) : (
-                      <Ionicons name="ellipse-outline" size={18} color={theme.colors.mutedLight} />
-                    )}
-                  </Pressable>
-                )
-              })}
-            </View>
-          )}
-
-          <Pressable
-            style={[styles.applePayButton, isPayDisabled && styles.applePayDisabled]}
-            onPress={handlePurchase}
-            disabled={isPayDisabled}
-          >
-            <Ionicons name="logo-apple" size={18} color="#ffffff" />
-            <Text style={styles.applePayText}>
-              {isPurchasing ? 'Processing...' : 'Pay'}
-            </Text>
-          </Pressable>
-          {selectedLabel ? (
-            <Text style={styles.planSelected}>{selectedLabel}</Text>
-          ) : null}
-          <View style={styles.payNotes}>
-            <Text style={styles.payNote}>No charge for 7 days</Text>
-            <Text style={styles.payNote}>Cancel anytime</Text>
-            <Text style={styles.payNote}>Instant access</Text>
+        {/* Benefits */}
+        <View style={styles.benefits}>
+          <View style={styles.benefitRow}>
+            <Ionicons name="checkmark-circle" size={16} color={theme.colors.accent} />
+            <Text style={styles.benefitText}>Cancel anytime</Text>
+          </View>
+          <View style={styles.benefitRow}>
+            <Ionicons name="checkmark-circle" size={16} color={theme.colors.accent} />
+            <Text style={styles.benefitText}>No charge for 7 days</Text>
+          </View>
+          <View style={styles.benefitRow}>
+            <Ionicons name="checkmark-circle" size={16} color={theme.colors.accent} />
+            <Text style={styles.benefitText}>Instant access</Text>
           </View>
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </ScrollView>
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {/* CTA */}
+        <View style={styles.ctaSection}>
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={theme.colors.accent} />
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+          ) : (
+            <Pressable
+              style={[styles.ctaButton, (!offering || isPurchasing) && styles.ctaButtonDisabled]}
+              onPress={handleStartTrial}
+              disabled={!offering || isPurchasing}
+            >
+              {isPurchasing ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <Text style={styles.ctaButtonText}>Start Free Trial</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#ffffff" />
+                </>
+              )}
+            </Pressable>
+          )}
+        </View>
+      </View>
     </SafeAreaView>
   )
 }
@@ -199,155 +182,119 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  content: {
     padding: theme.spacing.page,
-    gap: 20,
+    justifyContent: 'center',
   },
   header: {
-    gap: 8,
+    alignItems: 'center',
+    marginBottom: 32,
   },
   title: {
     fontFamily: theme.fonts.display.regular,
     fontSize: 28,
     color: theme.colors.ink,
+    marginBottom: 8,
   },
   subtitle: {
     fontFamily: theme.fonts.body.regular,
-    fontSize: 14,
+    fontSize: 15,
     color: theme.colors.muted,
+    textAlign: 'center',
   },
-  featureCard: {
+  features: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radii.card,
-    padding: 16,
-    gap: 14,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    ...theme.shadows.card,
+    gap: 12,
   },
   featureRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-  featureIcon: {
-    height: 28,
-    width: 28,
-    borderRadius: 9,
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: theme.colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   featureText: {
     flex: 1,
-    gap: 4,
   },
   featureTitle: {
     fontFamily: theme.fonts.body.medium,
     fontSize: 14,
     color: theme.colors.ink,
+    marginBottom: 2,
   },
   featureDetail: {
-    fontFamily: theme.fonts.body.regular,
-    fontSize: 12,
-    color: theme.colors.muted,
-  },
-  payCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radii.card,
-    padding: 18,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadows.card,
-  },
-  payTitle: {
-    fontFamily: theme.fonts.body.medium,
-    fontSize: 16,
-    color: theme.colors.ink,
-  },
-  paySubtitle: {
     fontFamily: theme.fonts.body.regular,
     fontSize: 13,
     color: theme.colors.muted,
   },
-  loadingRow: {
+  benefits: {
+    justifyContent: 'space-around',
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  benefitRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
-  loadingText: {
+  benefitText: {
     fontFamily: theme.fonts.body.regular,
-    fontSize: 12,
+    fontSize: 13,
     color: theme.colors.muted,
   },
-  planList: {
-    gap: 10,
-  },
-  planRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  errorContainer: {
+    backgroundColor: '#fee2e2',
     padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderRadius: 10,
+    marginBottom: 16,
   },
-  planRowSelected: {
-    borderColor: theme.colors.accent,
-    backgroundColor: theme.colors.accentSoft,
-  },
-  planInfo: {
-    gap: 4,
-  },
-  planTitle: {
-    fontFamily: theme.fonts.body.medium,
-    fontSize: 14,
-    color: theme.colors.ink,
-  },
-  planMeta: {
-    fontFamily: theme.fonts.body.regular,
-    fontSize: 12,
-    color: theme.colors.muted,
-  },
-  applePayButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#111111',
-    borderRadius: 12,
-    paddingVertical: 12,
-  },
-  applePayDisabled: {
-    opacity: 0.6,
-  },
-  applePayText: {
-    fontFamily: theme.fonts.body.medium,
-    fontSize: 15,
-    color: '#ffffff',
-  },
-  planSelected: {
-    fontFamily: theme.fonts.body.medium,
-    fontSize: 12,
-    color: theme.colors.muted,
-    textAlign: 'center',
-  },
-  payNotes: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  payNote: {
-    fontFamily: theme.fonts.body.regular,
-    fontSize: 12,
-    color: theme.colors.mutedLight,
-  },
-  error: {
+  errorText: {
     fontFamily: theme.fonts.body.medium,
     fontSize: 13,
     color: theme.colors.danger,
     textAlign: 'center',
+  },
+  ctaSection: {
+    gap: 12,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+  },
+  loadingText: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 14,
+    color: theme.colors.muted,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: theme.colors.accent,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  ctaButtonDisabled: {
+    opacity: 0.5,
+  },
+  ctaButtonText: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 16,
+    color: '#ffffff',
   },
 })

@@ -37,7 +37,7 @@ export default function LoginScreen() {
             onPress={async () => {
               const success = await signInWithApple()
               if (success) {
-                router.push('/(auth)/plaid-intro')
+                router.push('/(auth)/plaid-connect')
               }
             }}
             loading={isWorking}

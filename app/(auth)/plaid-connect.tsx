@@ -14,6 +14,13 @@ export default function PlaidConnectScreen() {
   const { openLinkFlow, isLoading, error } = usePlaid()
   const [linked, setLinked] = useState(false)
 
+  const bullets = [
+    'Bank-level encryption',
+    'Read-only access',
+    'We never move money',
+    '12,000+ institutions',
+  ]
+
   const handleConnect = () => {
     openLinkFlow({
       userId: user?.id ?? 'demo-user',
@@ -32,23 +39,29 @@ export default function PlaidConnectScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.kicker}>Step 3 of 8</Text>
-          <Text style={styles.title}>Connect Accounts</Text>
+          <Text style={styles.kicker}>Step 2 of 7</Text>
+          <Text style={styles.title}>Connect Your Accounts</Text>
           <Text style={styles.subtitle}>
-            Link your primary bank and investment accounts to personalize your insights.
+            We use Plaid to securely connect your bank and investment accounts.
           </Text>
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.cardRow}>
-            <Ionicons name="shield-checkmark" size={18} color={theme.colors.accent} />
-            <Text style={styles.cardText}>Bank-grade security through Plaid</Text>
-          </View>
-          <View style={styles.cardRow}>
-            <Ionicons name="lock-closed" size={18} color={theme.colors.accent} />
-            <Text style={styles.cardText}>Read-only access. Your money stays put.</Text>
-          </View>
+        <View style={styles.plaidBadge}>
+          <Text style={styles.plaidText}>Plaid</Text>
         </View>
+
+        <View style={styles.card}>
+          {bullets.map((item) => (
+            <View key={item} style={styles.bulletRow}>
+              <Ionicons name="checkmark-circle" size={18} color={theme.colors.accent} />
+              <Text style={styles.bulletText}>{item}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.trustText}>
+          Used by Venmo, Robinhood, and millions of users.
+        </Text>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {linked ? <Text style={styles.success}>Account connected.</Text> : null}
@@ -105,6 +118,20 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: theme.colors.muted,
   },
+  plaidBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  plaidText: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 13,
+    color: theme.colors.ink,
+  },
   card: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radii.card,
@@ -114,15 +141,20 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
-  cardRow: {
+  bulletRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  cardText: {
+  bulletText: {
     fontFamily: theme.fonts.body.regular,
     fontSize: 14,
     color: theme.colors.muted,
+  },
+  trustText: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 13,
+    color: theme.colors.mutedLight,
   },
   error: {
     fontFamily: theme.fonts.body.medium,

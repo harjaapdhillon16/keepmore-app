@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:3000'
+const DEFAULT_API_BASE_URL = 'https://keepmore.finance'
 const env = (globalThis as { process?: { env?: Record<string, string> } }).process
   ?.env
 

@@ -6,34 +6,43 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
 
-export default function EmailAuthScreen() {
+export default function EmailOtpAuthScreen() {
   const router = useRouter()
-  const { signInWithEmail, signUpWithEmail, isWorking, error } = useAuth()
-  const [mode, setMode] = useState<'signup' | 'signin'>('signup')
+  const { sendEmailOtp, verifyEmailOtp, isWorking, error } = useAuth()
+
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [otp, setOtp] = useState('')
+  const [step, setStep] = useState<'email' | 'otp'>('email')
   const [notice, setNotice] = useState<string | null>(null)
 
-  const handleSubmit = async () => {
+  const handleSendCode = async () => {
     setNotice(null)
-    if (!email || !password) {
-      setNotice('Enter your email and password to continue.')
+
+    if (!email) {
+      setNotice('Enter your email to continue.')
       return
     }
-    if (mode === 'signup') {
-      const result = await signUpWithEmail(email.trim(), password)
-      if (result.success) {
-        if (result.needsEmailConfirmation) {
-          setNotice('Check your email to confirm your account.')
-        } else {
-          router.push('/(auth)/plaid-intro')
-        }
-      }
+
+    const result = await sendEmailOtp(email.trim())
+
+    if (result.success) {
+      setStep('otp')
+      setNotice('We sent a 8-digit code to your email.')
+    }
+  }
+
+  const handleVerify = async () => {
+    setNotice(null)
+
+    if (!otp) {
+      setNotice('Enter the verification code.')
       return
     }
-    const signedIn = await signInWithEmail(email.trim(), password)
-    if (signedIn) {
-      router.push('/(auth)/plaid-intro')
+
+    const result = await verifyEmailOtp(email.trim(), otp)
+
+    if (result.success) {
+      router.push('/(auth)/plaid-connect')
     }
   }
 
@@ -46,67 +55,89 @@ export default function EmailAuthScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.title}>
-            {mode === 'signup' ? 'Create your account' : 'Welcome back'}
+            {step === 'email' ? 'Sign in or create account' : 'Check your email'}
           </Text>
+
           <Text style={styles.subtitle}>
-            {mode === 'signup'
-              ? 'Use your email to start your free trial.'
-              : 'Sign in to continue your onboarding.'}
+            {step === 'email'
+              ? 'We’ll email you a one-time code.'
+              : `Enter the 8-digit code sent to ${email}`}
           </Text>
         </View>
 
         <View style={styles.form}>
-          <TextInput
-            mode="outlined"
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            style={styles.input}
-          />
-          <TextInput
-            mode="outlined"
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            textContentType="password"
-            style={styles.input}
-          />
+          {step === 'email' && (
+            <TextInput
+              mode="outlined"
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              style={styles.input}
+            />
+          )}
+
+          {step === 'otp' && (
+            <TextInput
+              mode="outlined"
+              label="Verification code"
+              value={otp}
+              onChangeText={setOtp}
+              keyboardType="number-pad"
+              maxLength={8}
+              style={styles.input}
+            />
+          )}
         </View>
 
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Button
-          mode="contained"
-          buttonColor={theme.colors.primary}
-          textColor="#ffffff"
-          style={styles.primaryButton}
-          contentStyle={styles.buttonContent}
-          labelStyle={styles.primaryLabel}
-          onPress={handleSubmit}
-          loading={isWorking}
-          disabled={isWorking}
-        >
-          {mode === 'signup' ? 'Create account' : 'Sign in'}
-        </Button>
+        {step === 'email' ? (
+          <Button
+            mode="contained"
+            buttonColor={theme.colors.primary}
+            textColor="#ffffff"
+            style={styles.primaryButton}
+            contentStyle={styles.buttonContent}
+            labelStyle={styles.primaryLabel}
+            onPress={handleSendCode}
+            loading={isWorking}
+            disabled={isWorking}
+          >
+            Send code
+          </Button>
+        ) : (
+          <>
+            <Button
+              mode="contained"
+              buttonColor={theme.colors.primary}
+              textColor="#ffffff"
+              style={styles.primaryButton}
+              contentStyle={styles.buttonContent}
+              labelStyle={styles.primaryLabel}
+              onPress={handleVerify}
+              loading={isWorking}
+              disabled={isWorking}
+            >
+              Verify & continue
+            </Button>
 
-        <Button
-          mode="text"
-          textColor={theme.colors.muted}
-          labelStyle={styles.switchLabel}
-          onPress={() => {
-            setNotice(null)
-            setMode(mode === 'signup' ? 'signin' : 'signup')
-          }}
-        >
-          {mode === 'signup'
-            ? 'Already have an account? Sign in'
-            : "Don't have an account? Create one"}
-        </Button>
+            <Button
+              mode="text"
+              textColor={theme.colors.muted}
+              labelStyle={styles.switchLabel}
+              onPress={() => {
+                setOtp('')
+                setStep('email')
+              }}
+            >
+              Change email
+            </Button>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   )

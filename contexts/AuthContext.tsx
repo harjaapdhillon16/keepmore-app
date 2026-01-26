@@ -16,11 +16,11 @@ type AuthState = {
 
 type AuthContextValue = AuthState & {
   signInWithApple: () => Promise<boolean>
-  signUpWithEmail: (email: string, password: string) => Promise<{
-    success: boolean
-    needsEmailConfirmation?: boolean
-  }>
-  signInWithEmail: (email: string, password: string) => Promise<boolean>
+  sendEmailOtp: (email: string) => Promise<{ success: boolean }>
+  verifyEmailOtp: (
+    email: string,
+    token: string,
+  ) => Promise<{ success: boolean }>
   signOut: () => Promise<void>
 }
 
@@ -65,11 +65,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isWorking, setIsWorking] = useState(false)
   const [purchasesReady, setPurchasesReady] = useState(false)
 
+  // -----------------------------
+  // SESSION SYNC
+  // -----------------------------
   useEffect(() => {
     let isMounted = true
+
     const syncSession = async () => {
       const { data } = await supabase.auth.getSession()
       if (!isMounted) return
+
       setSession(data.session)
       setUser(data.session?.user ?? null)
       setStatus(data.session ? 'authenticated' : 'idle')
@@ -91,27 +96,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // -----------------------------
+  // REVENUECAT SETUP
+  // -----------------------------
   useEffect(() => {
     const apiKey = getRevenueCatKey()
+
     if (!apiKey) {
       console.warn(
         'Missing RevenueCat API key. Set EXPO_PUBLIC_REVENUECAT_IOS_API_KEY or EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY.',
       )
       return
     }
+
     if (__DEV__) {
       Purchases.setLogLevel(LOG_LEVEL.VERBOSE)
     }
+
     Purchases.configure({ apiKey })
     setPurchasesReady(true)
   }, [])
 
+  // -----------------------------
+  // SYNC USER TO REVENUECAT
+  // -----------------------------
   useEffect(() => {
     if (!purchasesReady) return
+
     const syncPurchases = async () => {
       try {
         if (user?.id) {
           await Purchases.logIn(user.id)
+
           if (user.email) {
             await Purchases.setAttributes({ email: user.email })
           }
@@ -122,23 +138,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('Failed to sync RevenueCat user:', err)
       }
     }
+
     syncPurchases()
   }, [user?.id, user?.email, purchasesReady])
 
+  // -----------------------------
+  // APPLE SIGN IN
+  // -----------------------------
   const signInWithApple = async () => {
     setIsWorking(true)
     setError(undefined)
+
     try {
       const available = await AppleAuthentication.isAvailableAsync()
+
       if (!available) {
         setError('Apple Sign In is not available on this device.')
         return false
       }
+
       const nonce = await generateNonce()
       const hashedNonce = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
         nonce,
       )
+
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -170,52 +194,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const signUpWithEmail = async (email: string, password: string) => {
+  // -----------------------------
+  // EMAIL OTP — SEND
+  // -----------------------------
+  const sendEmailOtp = async (email: string) => {
     setIsWorking(true)
     setError(undefined)
+
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const { error: otpError } = await supabase.auth.signInWithOtp({
         email,
-        password,
       })
-      if (signUpError) {
-        throw signUpError
+
+      if (otpError) {
+        throw otpError
       }
-      return {
-        success: true,
-        needsEmailConfirmation: !data.session,
-      }
+
+      return { success: true }
     } catch (err) {
-      setError(getErrorMessage(err, 'Unable to sign up with email.'))
+      setError(getErrorMessage(err, 'Unable to send verification code.'))
       return { success: false }
     } finally {
       setIsWorking(false)
     }
   }
 
-  const signInWithEmail = async (email: string, password: string) => {
+  // -----------------------------
+  // EMAIL OTP — VERIFY
+  // -----------------------------
+  const verifyEmailOtp = async (email: string, token: string) => {
     setIsWorking(true)
     setError(undefined)
+
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
         email,
-        password,
+        token,
+        type: 'email',
       })
-      if (signInError) {
-        throw signInError
+
+      if (verifyError || !data.session) {
+        throw verifyError || new Error('Invalid verification code.')
       }
-      return true
+
+      return { success: true }
     } catch (err) {
-      setError(getErrorMessage(err, 'Unable to sign in with email.'))
-      return false
+      setError(getErrorMessage(err, 'Unable to verify code.'))
+      return { success: false }
     } finally {
       setIsWorking(false)
     }
   }
 
+  // -----------------------------
+  // SIGN OUT
+  // -----------------------------
   const signOut = async () => {
     setIsWorking(true)
     setError(undefined)
+
     try {
       await supabase.auth.signOut()
     } catch (err) {
@@ -234,8 +271,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         isWorking,
         signInWithApple,
-        signUpWithEmail,
-        signInWithEmail,
+        sendEmailOtp,
+        verifyEmailOtp,
         signOut,
       }}
     >
@@ -246,8 +283,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
+
   if (!context) {
     throw new Error('useAuth must be used within AuthProvider')
   }
+
   return context
 }

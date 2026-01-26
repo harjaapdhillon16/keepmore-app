@@ -90,7 +90,7 @@ export function usePlaid() {
     const response = await fetch(apiUrl('/api/plaid/exchange-token'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ publicToken, user:user?.id }),
+      body: JSON.stringify({ publicToken, user: user?.id }),
     })
     const payload = await response.json().catch(() => null)
     if (!response.ok) {
@@ -126,6 +126,10 @@ export function usePlaid() {
         open({
           onSuccess: async (success) => {
             try {
+              setState((d) => ({
+                ...d,
+                isLoading: true,
+              }))
               const exchange = await exchangePublicToken(success.publicToken)
               onSuccess?.({
                 publicToken: success.publicToken,
@@ -170,5 +174,6 @@ export function usePlaid() {
     createLinkToken,
     exchangePublicToken,
     openLinkFlow,
+    setLoadingState: setState
   }
 }
