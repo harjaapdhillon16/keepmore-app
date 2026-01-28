@@ -1,12 +1,51 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
+import { useEffect, useRef, useState } from 'react'
 import { ScrollView, StatusBar, StyleSheet, View } from 'react-native'
-import { Button, Text } from 'react-native-paper'
+import { ActivityIndicator, Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../constants/theme'
+import { useAuth } from '../contexts/AuthContext'
+import { getPostSignInRoute } from '../utils/postSignIn'
 
 export default function AppIndexScreen() {
   const router = useRouter()
+  const { user, status, isSigningOut } = useAuth()
+  const [isRouting, setIsRouting] = useState(false)
+  const hasBootstrapped = useRef(false)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const routeLoggedInUser = async () => {
+      if (status === 'loading' || isSigningOut || hasBootstrapped.current) {
+        return
+      }
+      hasBootstrapped.current = true
+
+      if (!user) {
+        return
+      }
+
+      setIsRouting(true)
+      try {
+        const nextRoute = await getPostSignInRoute(user.id)
+        if (isMounted) {
+          router.replace(nextRoute)
+        }
+      } finally {
+        if (isMounted) {
+          setIsRouting(false)
+        }
+      }
+    }
+
+    routeLoggedInUser()
+
+    return () => {
+      isMounted = false
+    }
+  }, [isSigningOut, router, status, user])
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
@@ -55,6 +94,12 @@ export default function AppIndexScreen() {
             </View>
           ))}
         </View>
+        {isRouting && user ? (
+          <View style={styles.routingOverlay}>
+            <ActivityIndicator size="small" color={theme.colors.accent} />
+            <Text style={styles.routingText}>Loading your account...</Text>
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   )
@@ -141,6 +186,17 @@ const styles = StyleSheet.create({
   statLabel: {
     fontFamily: theme.fonts.body.regular,
     fontSize: 12,
+    color: theme.colors.muted,
+  },
+  routingOverlay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+  },
+  routingText: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 13,
     color: theme.colors.muted,
   },
 })

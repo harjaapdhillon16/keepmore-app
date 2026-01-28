@@ -5,13 +5,18 @@ import { theme } from '../../constants/theme'
 type NetWorthCardProps = {
   amount: string
   changeLabel: string
+  label?: string
 }
 
-export default function NetWorthCard({ amount, changeLabel }: NetWorthCardProps) {
+export default function NetWorthCard({
+  amount,
+  changeLabel,
+  label = 'Net worth',
+}: NetWorthCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <Text style={styles.label}>Net worth</Text>
+        <Text style={styles.label}>{label}</Text>
         <View style={styles.changeBadge}>
           <Text style={styles.changeText}>{changeLabel}</Text>
         </View>

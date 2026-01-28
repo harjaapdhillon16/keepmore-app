@@ -5,15 +5,35 @@ import { Button, Text, TextInput } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
+import { getPostSignInRoute } from '../../utils/postSignIn'
 
 export default function EmailOtpAuthScreen() {
   const router = useRouter()
-  const { sendEmailOtp, verifyEmailOtp, isWorking, error } = useAuth()
+  const { sendEmailOtp, verifyEmailOtp, isWorking, error, user } = useAuth()
 
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState<'email' | 'otp'>('email')
   const [notice, setNotice] = useState<string | null>(null)
+  const [routingError, setRoutingError] = useState<string | null>(null)
+  const [isRouting, setIsRouting] = useState(false)
+
+  const handlePostSignIn = async (userId?: string) => {
+    setRoutingError(null)
+    setIsRouting(true)
+    try {
+      const resolvedUserId = userId ?? user?.id
+      if (!resolvedUserId) {
+        throw new Error('Missing cached user')
+      }
+      const nextRoute = await getPostSignInRoute(resolvedUserId)
+      router.replace(nextRoute)
+    } catch (err) {
+      setRoutingError('Unable to continue. Please try again.')
+    } finally {
+      setIsRouting(false)
+    }
+  }
 
   const handleSendCode = async () => {
     setNotice(null)
@@ -42,7 +62,7 @@ export default function EmailOtpAuthScreen() {
     const result = await verifyEmailOtp(email.trim(), otp)
 
     if (result.success) {
-      router.push('/(auth)/plaid-connect')
+      await handlePostSignIn(result.userId)
     }
   }
 
@@ -94,6 +114,7 @@ export default function EmailOtpAuthScreen() {
 
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
+        {routingError ? <Text style={styles.error}>{routingError}</Text> : null}
 
         {step === 'email' ? (
           <Button
@@ -104,8 +125,8 @@ export default function EmailOtpAuthScreen() {
             contentStyle={styles.buttonContent}
             labelStyle={styles.primaryLabel}
             onPress={handleSendCode}
-            loading={isWorking}
-            disabled={isWorking}
+            loading={isWorking || isRouting}
+            disabled={isWorking || isRouting}
           >
             Send code
           </Button>
@@ -119,8 +140,8 @@ export default function EmailOtpAuthScreen() {
               contentStyle={styles.buttonContent}
               labelStyle={styles.primaryLabel}
               onPress={handleVerify}
-              loading={isWorking}
-              disabled={isWorking}
+              loading={isWorking || isRouting}
+              disabled={isWorking || isRouting}
             >
               Verify & continue
             </Button>
@@ -133,6 +154,7 @@ export default function EmailOtpAuthScreen() {
                 setOtp('')
                 setStep('email')
               }}
+              disabled={isRouting}
             >
               Change email
             </Button>

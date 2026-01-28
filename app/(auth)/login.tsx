@@ -1,14 +1,35 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
+import { useState } from 'react'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
+import { getPostSignInRoute } from '../../utils/postSignIn'
 
 export default function LoginScreen() {
   const router = useRouter()
-  const { signInWithApple, isWorking, error } = useAuth()
+  const { signInWithApple, isWorking, error, user } = useAuth()
+  const [isRouting, setIsRouting] = useState(false)
+  const [routingError, setRoutingError] = useState<string | null>(null)
+
+  const handlePostSignIn = async (userId?: string) => {
+    setRoutingError(null)
+    setIsRouting(true)
+    try {
+      const resolvedUserId = userId ?? user?.id
+      if (!resolvedUserId) {
+        throw new Error('Missing cached user')
+      }
+      const nextRoute = await getPostSignInRoute(resolvedUserId)
+      router.replace(nextRoute)
+    } catch (err) {
+      setRoutingError('Unable to continue. Please try again.')
+    } finally {
+      setIsRouting(false)
+    }
+  }
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}
@@ -35,13 +56,13 @@ export default function LoginScreen() {
             labelStyle={styles.primaryLabel}
             icon={() => <Ionicons name="logo-apple" size={18} color="#ffffff" />}
             onPress={async () => {
-              const success = await signInWithApple()
-              if (success) {
-                router.push('/(auth)/plaid-connect')
+              const result = await signInWithApple()
+              if (result.success) {
+                await handlePostSignIn(result.userId)
               }
             }}
-            loading={isWorking}
-            disabled={isWorking}
+            loading={isWorking || isRouting}
+            disabled={isWorking || isRouting}
           >
             Continue with Apple
           </Button>
@@ -53,7 +74,7 @@ export default function LoginScreen() {
             labelStyle={styles.secondaryLabel}
             icon={() => <Ionicons name="mail-outline" size={18} color={theme.colors.ink} />}
             onPress={() => router.push('/(auth)/email')}
-            disabled={isWorking}
+            disabled={isWorking || isRouting}
           >
             Continue with Email
           </Button>
@@ -61,6 +82,7 @@ export default function LoginScreen() {
 
         <View style={styles.footer}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
+          {routingError ? <Text style={styles.error}>{routingError}</Text> : null}
           <Text style={styles.legal}>
             By continuing, you agree to Terms and Privacy Policy.
           </Text>

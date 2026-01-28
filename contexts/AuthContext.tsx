@@ -4,6 +4,7 @@ import * as AppleAuthentication from 'expo-apple-authentication'
 import * as Crypto from 'expo-crypto'
 import Purchases, { LOG_LEVEL } from 'react-native-purchases'
 import type { Session, User } from '@supabase/supabase-js'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '../lib/supabase'
 
 type AuthState = {
@@ -12,16 +13,17 @@ type AuthState = {
   session: Session | null
   error?: string
   isWorking: boolean
+  isSigningOut: boolean
 }
 
 type AuthContextValue = AuthState & {
-  signInWithApple: () => Promise<boolean>
+  signInWithApple: () => Promise<{ success: boolean; userId?: string }>
   sendEmailOtp: (email: string) => Promise<{ success: boolean }>
   verifyEmailOtp: (
     email: string,
     token: string,
-  ) => Promise<{ success: boolean }>
-  signOut: () => Promise<void>
+  ) => Promise<{ success: boolean; userId?: string }>
+  signOut: (fn: () => void) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -31,6 +33,8 @@ const env = (globalThis as { process?: { env?: Record<string, string> } }).proce
 
 const fallbackRevenueCatIosKey = 'test_gzYNdApzdBtQNVUTEcWnHiBhVMz'
 const fallbackRevenueCatAndroidKey = 'test_gzYNdApzdBtQNVUTEcWnHiBhVMz'
+
+const cachedUserKey = 'keepmore:cached-user'
 
 const revenueCatIosKey =
   env?.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY || fallbackRevenueCatIosKey
@@ -63,36 +67,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthState['status']>('loading')
   const [error, setError] = useState<string | undefined>(undefined)
   const [isWorking, setIsWorking] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const [purchasesReady, setPurchasesReady] = useState(false)
 
   // -----------------------------
-  // SESSION SYNC
+  // CACHED USER SYNC
   // -----------------------------
   useEffect(() => {
     let isMounted = true
 
-    const syncSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (!isMounted) return
-
-      setSession(data.session)
-      setUser(data.session?.user ?? null)
-      setStatus(data.session ? 'authenticated' : 'idle')
+    const loadCachedUser = async () => {
+      try {
+        const cached = await AsyncStorage.getItem(cachedUserKey)
+        if (!isMounted) return
+        if (cached) {
+          const parsed = JSON.parse(cached) as User
+          setUser(parsed)
+          setStatus('authenticated')
+        } else {
+          setUser(null)
+          setStatus('idle')
+        }
+      } catch (err) {
+        if (!isMounted) return
+        setUser(null)
+        setStatus('idle')
+      }
     }
 
-    syncSession()
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        setSession(nextSession)
-        setUser(nextSession?.user ?? null)
-        setStatus(nextSession ? 'authenticated' : 'idle')
-      },
-    )
+    loadCachedUser()
 
     return () => {
       isMounted = false
-      authListener.subscription.unsubscribe()
     }
   }, [])
 
@@ -175,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Unable to sign in with Apple.')
       }
 
-      const { error: signInError } = await supabase.auth.signInWithIdToken({
+      const { data, error: signInError } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
         nonce,
@@ -185,10 +191,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw signInError
       }
 
-      return true
+      const nextUser = data.user ?? data.session?.user ?? null
+      if (!nextUser) {
+        throw new Error('Missing user after sign in.')
+      }
+
+      setUser(nextUser)
+      setStatus('authenticated')
+      await AsyncStorage.setItem(cachedUserKey, JSON.stringify(nextUser))
+      setSession(null)
+
+      return { success: true, userId: nextUser.id }
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to sign in with Apple.'))
-      return false
+      return { success: false }
     } finally {
       setIsWorking(false)
     }
@@ -237,7 +253,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw verifyError || new Error('Invalid verification code.')
       }
 
-      return { success: true }
+      const nextUser = data.user ?? data.session?.user ?? null
+      if (!nextUser) {
+        throw new Error('Missing user after verification.')
+      }
+
+      setUser(nextUser)
+      setStatus('authenticated')
+      await AsyncStorage.setItem(cachedUserKey, JSON.stringify(nextUser))
+      setSession(null)
+
+      return { success: true, userId: nextUser.id }
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to verify code.'))
       return { success: false }
@@ -249,17 +275,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // -----------------------------
   // SIGN OUT
   // -----------------------------
-  const signOut = async () => {
+  const signOut = async (fn: () => {}) => {
+    setIsSigningOut(true)
     setIsWorking(true)
     setError(undefined)
 
+    setUser(null)
+    setSession(null)
+    setStatus('idle')
     try {
+      await AsyncStorage.removeItem(cachedUserKey)
       await supabase.auth.signOut()
+      fn()
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to sign out.'))
     } finally {
+      setIsSigningOut(false)
       setIsWorking(false)
     }
+
   }
 
   return (
@@ -270,6 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         error,
         isWorking,
+        isSigningOut,
         signInWithApple,
         sendEmailOtp,
         verifyEmailOtp,

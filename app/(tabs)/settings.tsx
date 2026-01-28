@@ -1,8 +1,12 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
-import { ScrollView, StyleSheet, View } from 'react-native'
-import { Text } from 'react-native-paper'
+import { useRouter } from 'expo-router'
+import { useState } from 'react'
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
+import { useAuth } from '../../contexts/AuthContext'
 
 type IconName = keyof typeof Ionicons.glyphMap
 
@@ -58,6 +62,25 @@ const sections: { title: string; items: SettingsItem[] }[] = [
 ]
 
 export default function SettingsScreen() {
+  const router = useRouter()
+  const { signOut, isWorking, isSigningOut,user } = useAuth()
+
+  const handleSignOut = async () => {
+    const fn = ()=>{
+      router.replace("/(auth)")
+    }
+    await signOut(fn)
+
+  }
+
+  const confirmSignOut = () => {
+    if (isWorking || isSigningOut) return
+    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: handleSignOut },
+    ])
+  }
+
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView
@@ -121,6 +144,32 @@ export default function SettingsScreen() {
             </View>
           </View>
         ))}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account actions</Text>
+          <View style={styles.sectionCard}>
+            <Pressable
+              onPress={confirmSignOut}
+              disabled={isWorking || isSigningOut}
+              style={({ pressed }) => [
+                styles.logoutRow,
+                pressed && styles.logoutRowPressed,
+              ]}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconBadge, styles.iconBadgeDanger]}>
+                  <Ionicons name="log-out-outline" size={18} color={theme.colors.danger} />
+                </View>
+                <Text style={[styles.rowLabel, styles.rowLabelDanger]}>Sign out</Text>
+              </View>
+              {isWorking || isSigningOut ? (
+                <ActivityIndicator size="small" color={theme.colors.danger} />
+              ) : (
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedLight} />
+              )}
+            </Pressable>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   )
@@ -239,5 +288,15 @@ const styles = StyleSheet.create({
   },
   rowLabelDanger: {
     color: theme.colors.danger,
+  },
+  logoutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  logoutRowPressed: {
+    backgroundColor: theme.colors.surfaceAlt,
   },
 })
