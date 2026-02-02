@@ -1,11 +1,8 @@
 import { Ionicons } from '@expo/vector-icons'
-import { Tabs, useRouter } from 'expo-router'
-import { useEffect } from 'react'
+import { Tabs } from 'expo-router'
 import { theme } from '../../constants/theme'
-import { useAuth } from '../../contexts/AuthContext'
 
 export default function TabsLayout() {
-  const router = useRouter()
   return (
     <Tabs
       screenOptions={({ route }) => {
@@ -44,16 +41,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="expenses" options={{ title: 'Expenses' }} />
       <Tabs.Screen name="investments" options={{ title: 'Investments' }} />
-      <Tabs.Screen
-        name="taxes"
-        options={{ title: 'Assistant' }}
-        listeners={{
-          tabPress: (event) => {
-            event.preventDefault()
-            router.push('/assistant')
-          },
-        }}
-      />
+      <Tabs.Screen name="taxes" options={{ title: 'Assistant' }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
     </Tabs>
   )

@@ -6,6 +6,12 @@ import Purchases, { LOG_LEVEL } from 'react-native-purchases'
 import type { Session, User } from '@supabase/supabase-js'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '../lib/supabase'
+import {
+  logError,
+  logEvent,
+  logLogin,
+  setUserContext,
+} from '../lib/telemetry'
 
 type AuthState = {
   status: 'idle' | 'loading' | 'authenticated'
@@ -31,7 +37,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 const env = (globalThis as { process?: { env?: Record<string, string> } }).process
   ?.env
 
-const fallbackRevenueCatIosKey = 'test_gzYNdApzdBtQNVUTEcWnHiBhVMz'
+const fallbackRevenueCatIosKey = 'appl_vsFnufLhgtzGnfpxTuLYFKJmCtT'
 const fallbackRevenueCatAndroidKey = 'test_gzYNdApzdBtQNVUTEcWnHiBhVMz'
 
 const cachedUserKey = 'keepmore:cached-user'
@@ -101,6 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    void setUserContext(user?.id ?? null)
+  }, [user?.id])
 
   // -----------------------------
   // REVENUECAT SETUP
@@ -200,10 +210,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus('authenticated')
       await AsyncStorage.setItem(cachedUserKey, JSON.stringify(nextUser))
       setSession(null)
+      void logLogin('apple', nextUser.id)
 
       return { success: true, userId: nextUser.id }
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to sign in with Apple.'))
+      logError(err, 'Auth: Apple sign-in failed')
       return { success: false }
     } finally {
       setIsWorking(false)
@@ -226,9 +238,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw otpError
       }
 
+      void logEvent('email_otp_requested')
       return { success: true }
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to send verification code.'))
+      logError(err, 'Auth: Email OTP request failed')
       return { success: false }
     } finally {
       setIsWorking(false)
@@ -262,10 +276,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus('authenticated')
       await AsyncStorage.setItem(cachedUserKey, JSON.stringify(nextUser))
       setSession(null)
+      void logLogin('email_otp', nextUser.id)
 
       return { success: true, userId: nextUser.id }
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to verify code.'))
+      logError(err, 'Auth: Email OTP verify failed')
       return { success: false }
     } finally {
       setIsWorking(false)
@@ -287,8 +303,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.removeItem(cachedUserKey)
       await supabase.auth.signOut()
       fn()
+      void logEvent('logout')
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to sign out.'))
+      logError(err, 'Auth: Sign out failed')
     } finally {
       setIsSigningOut(false)
       setIsWorking(false)
