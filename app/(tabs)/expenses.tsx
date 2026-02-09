@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react'
 import { ScrollView, StyleSheet, View } from 'react-native'
-import { ActivityIndicator, Chip, Text } from 'react-native-paper'
+import { ActivityIndicator, Button, Chip, Modal, Portal, Text, TextInput } from 'react-native-paper'
+import { DatePickerModal } from 'react-native-paper-dates'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePlaidData } from '../../hooks/usePlaidData'
+import { useBudget } from '../../hooks/useBudget'
 import {
   formatCurrency,
+  formatLongDate,
   formatShortDate,
   getCategoryLabel,
   humanizeLabel,
@@ -19,6 +22,7 @@ const filterOptions = [
   { label: 'All', value: 'all' },
   { label: 'This month', value: 'this-month' },
   { label: 'Last month', value: 'last-month' },
+  { label: 'Custom', value: 'custom' },
   { label: 'Recurring', value: 'recurring' },
 ]
 
@@ -63,7 +67,16 @@ const getRelativeLabel = (date: Date | null) => {
 export default function ExpensesScreen() {
   const { user, status } = useAuth()
   const { transactions, recurring, loading, error } = usePlaidData(user?.id)
+  const { budget, loading: budgetLoading, saveBudget } = useBudget(user?.id)
   const [activeFilter, setActiveFilter] = useState('all')
+  const [budgetModalOpen, setBudgetModalOpen] = useState(false)
+  const [budgetValue, setBudgetValue] = useState('')
+  const [budgetError, setBudgetError] = useState<string | null>(null)
+  const [isSavingBudget, setIsSavingBudget] = useState(false)
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null)
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(null)
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false)
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false)
 
   const normalizedTransactions = useMemo<NormalizedTransaction[]>(() => {
     return transactions.map((transaction) => {
@@ -110,6 +123,7 @@ export default function ExpensesScreen() {
     summaryTotal,
     summaryCount,
     topCategory,
+    currentMonthTotal,
     recurringBills,
     recurringTotal,
     nextRecurring,
@@ -119,8 +133,29 @@ export default function ExpensesScreen() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+    const startOfCustom =
+      customStartDate &&
+      new Date(
+        customStartDate.getFullYear(),
+        customStartDate.getMonth(),
+        customStartDate.getDate(),
+      )
+    const endOfCustom =
+      customEndDate &&
+      new Date(
+        customEndDate.getFullYear(),
+        customEndDate.getMonth(),
+        customEndDate.getDate(),
+        23,
+        59,
+        59,
+        999,
+      )
 
     const expenses = normalizedTransactions.filter((tx) => tx.amount > 0)
+    const currentMonthExpenses = expenses.filter(
+      (tx) => tx.date && tx.date >= startOfMonth,
+    )
 
     let filtered = expenses
     if (activeFilter === 'this-month') {
@@ -133,7 +168,21 @@ export default function ExpensesScreen() {
       )
     }
 
+    if (activeFilter === 'custom') {
+      filtered = expenses.filter((tx) => {
+        if (!tx.date) return false
+        const time = tx.date.getTime()
+        if (startOfCustom && time < startOfCustom.getTime()) return false
+        if (endOfCustom && time > endOfCustom.getTime()) return false
+        return true
+      })
+    }
+
     const summary = filtered.reduce((total, tx) => total + tx.amount, 0)
+    const currentMonthSum = currentMonthExpenses.reduce(
+      (total, tx) => total + tx.amount,
+      0,
+    )
 
     const categoryTotals = filtered.reduce((acc, tx) => {
       acc[tx.category] = (acc[tx.category] || 0) + tx.amount
@@ -177,12 +226,19 @@ export default function ExpensesScreen() {
       summaryTotal: summary,
       summaryCount: filtered.length,
       topCategory: top,
+      currentMonthTotal: currentMonthSum,
       recurringBills: upcomingRecurring,
       recurringTotal: upcomingTotal,
       nextRecurring: upcomingRecurring[0] ?? null,
       recurringCount: activeRecurring.length,
     }
-  }, [activeFilter, normalizedRecurring, normalizedTransactions])
+  }, [
+    activeFilter,
+    customEndDate,
+    customStartDate,
+    normalizedRecurring,
+    normalizedTransactions,
+  ])
 
   const summaryTitle =
     activeFilter === 'recurring' ? 'Upcoming bills' : 'Total spending'
@@ -190,6 +246,73 @@ export default function ExpensesScreen() {
     activeFilter === 'recurring' ? recurringTotal : summaryTotal
   const summaryCountLabel =
     activeFilter === 'recurring' ? 'Bills' : 'Transactions'
+
+  const budgetAmount = budget?.amount ?? 0
+  const spentThisMonth = currentMonthTotal
+  const budgetProgress =
+    budgetAmount > 0 ? Math.min(spentThisMonth / budgetAmount, 1) : 0
+  const budgetRemaining = budgetAmount - spentThisMonth
+  const budgetFillColor =
+    budgetAmount > 0 && budgetRemaining < 0 ? theme.colors.danger : theme.colors.accent
+  const budgetStatus =
+    budgetAmount <= 0
+      ? 'Set a monthly budget to stay on track.'
+      : budgetRemaining >= 0
+        ? `${formatCurrency(budgetRemaining, currency)} remaining this month`
+        : `${formatCurrency(Math.abs(budgetRemaining), currency)} over budget`
+
+  const openBudgetModal = () => {
+    setBudgetValue(budgetAmount ? String(budgetAmount) : '')
+    setBudgetError(null)
+    setBudgetModalOpen(true)
+  }
+
+  const handleSaveBudget = async () => {
+    const parsed = Number(budgetValue)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setBudgetError('Enter a valid amount greater than 0.')
+      return
+    }
+
+    setIsSavingBudget(true)
+    setBudgetError(null)
+
+    try {
+      await saveBudget(parsed)
+      setBudgetModalOpen(false)
+    } catch (err) {
+      setBudgetError(err instanceof Error ? err.message : 'Unable to save budget.')
+    } finally {
+      setIsSavingBudget(false)
+    }
+  }
+
+  const handleStartDateConfirm = ({ date }: { date: Date }) => {
+    setShowStartDatePicker(false)
+    setCustomStartDate(date)
+    if (customEndDate && date.getTime() > customEndDate.getTime()) {
+      setCustomEndDate(null)
+    }
+    if (activeFilter !== 'custom') {
+      setActiveFilter('custom')
+    }
+  }
+
+  const handleEndDateConfirm = ({ date }: { date: Date }) => {
+    setShowEndDatePicker(false)
+    if (customStartDate && date.getTime() < customStartDate.getTime()) {
+      setCustomStartDate(date)
+    }
+    setCustomEndDate(date)
+    if (activeFilter !== 'custom') {
+      setActiveFilter('custom')
+    }
+  }
+
+  const clearCustomRange = () => {
+    setCustomStartDate(null)
+    setCustomEndDate(null)
+  }
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -257,6 +380,38 @@ export default function ExpensesScreen() {
 
         {user ? (
           <>
+            <View style={styles.budgetCard}>
+              <View style={styles.budgetHeader}>
+                <View>
+                  <Text style={styles.budgetLabel}>Monthly budget</Text>
+                  <Text style={styles.budgetValue}>
+                    {budgetLoading
+                      ? 'Loading...'
+                      : budgetAmount > 0
+                        ? formatCurrency(budgetAmount, currency)
+                        : 'No budget set'}
+                  </Text>
+                </View>
+                <Button
+                  mode="text"
+                  onPress={openBudgetModal}
+                  disabled={budgetLoading}
+                  textColor={theme.colors.accentStrong}
+                >
+                  {budgetAmount > 0 ? 'Edit' : 'Set budget'}
+                </Button>
+              </View>
+              <View style={styles.budgetTrack}>
+                <View
+                  style={[
+                    styles.budgetFill,
+                    { width: `${budgetProgress * 100}%`, backgroundColor: budgetFillColor },
+                  ]}
+                />
+              </View>
+              <Text style={styles.budgetStatus}>{budgetStatus}</Text>
+            </View>
+
             <View style={styles.filters}>
               {filterOptions.map((filter) => {
                 const isSelected = filter.value === activeFilter
@@ -264,7 +419,12 @@ export default function ExpensesScreen() {
                   <Chip
                     key={filter.value}
                     selected={isSelected}
-                    onPress={() => setActiveFilter(filter.value)}
+                    onPress={() => {
+                      setActiveFilter(filter.value)
+                      if (filter.value === 'custom' && !customStartDate) {
+                        setShowStartDatePicker(true)
+                      }
+                    }}
                     style={[styles.chip, isSelected && styles.chipSelected]}
                     textStyle={[styles.chipText, isSelected && styles.chipTextSelected]}
                   >
@@ -274,6 +434,56 @@ export default function ExpensesScreen() {
               })}
             </View>
 
+            {activeFilter === 'custom' ? (
+              <View style={styles.customRangeCard}>
+                <Text style={styles.customRangeTitle}>Custom range</Text>
+                <View style={styles.customRangeRow}>
+                  <View style={styles.customRangeField}>
+                    <Text style={styles.customRangeLabel}>From</Text>
+                    <Button
+                      mode="outlined"
+                      icon="calendar"
+                      onPress={() => setShowStartDatePicker(true)}
+                      style={styles.customRangeButton}
+                      contentStyle={styles.customRangeButtonContent}
+                      textColor={theme.colors.ink}
+                    >
+                      {customStartDate
+                        ? formatLongDate(customStartDate)
+                        : 'Select date'}
+                    </Button>
+                  </View>
+                  <View style={styles.customRangeField}>
+                    <Text style={styles.customRangeLabel}>To</Text>
+                    <Button
+                      mode="outlined"
+                      icon="calendar"
+                      onPress={() => setShowEndDatePicker(true)}
+                      style={styles.customRangeButton}
+                      contentStyle={styles.customRangeButtonContent}
+                      textColor={theme.colors.ink}
+                    >
+                      {customEndDate ? formatLongDate(customEndDate) : 'Select date'}
+                    </Button>
+                  </View>
+                </View>
+                {customStartDate || customEndDate ? (
+                  <Button
+                    mode="text"
+                    onPress={clearCustomRange}
+                    textColor={theme.colors.muted}
+                    compact
+                  >
+                    Clear dates
+                  </Button>
+                ) : (
+                  <Text style={styles.customRangeHint}>
+                    Select a start and end date to filter expenses.
+                  </Text>
+                )}
+              </View>
+            ) : null}
+
             {activeFilter === 'recurring' ? (
               <View style={styles.group}>
                 <Text style={styles.groupLabel}>Recurring bills</Text>
@@ -281,20 +491,27 @@ export default function ExpensesScreen() {
                   {recurringBills.length === 0 ? (
                     <Text style={styles.emptyListText}>No recurring transactions yet.</Text>
                   ) : (
-                    recurringBills.map((bill) => (
-                      <View key={bill.id} style={styles.row}>
-                        <View>
-                          <Text style={styles.merchant}>{bill.merchant}</Text>
-                          <Text style={styles.category}>
-                            {bill.category} -{' '}
-                            {bill.frequency ? humanizeLabel(bill.frequency) : 'One-time'}
-                          </Text>
+                    recurringBills.map((bill, index) => (
+                      <View
+                        key={bill.id}
+                        style={[styles.row, index > 0 && styles.rowDivider]}
+                      >
+                      <View style={styles.rowLeft}>
+                        <Text style={styles.merchant}>{bill.merchant}</Text>
+                        <Text style={styles.category}>
+                          {bill.category} -{' '}
+                          {bill.frequency ? humanizeLabel(bill.frequency) : 'One-time'}
+                        </Text>
                           {bill.status ? (
                             <Text style={styles.status}>{humanizeLabel(bill.status)}</Text>
                           ) : null}
                         </View>
                         <View style={styles.rowRight}>
-                          <Text style={styles.amount}>
+                          <Text
+                            style={styles.amount}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
                             {formatCurrency(bill.amount, currency)}
                           </Text>
                           <Text style={styles.date}>{formatShortDate(bill.nextDate)}</Text>
@@ -314,9 +531,12 @@ export default function ExpensesScreen() {
               groupedTransactions.map((group) => (
                 <View key={group.label} style={styles.group}>
                   <Text style={styles.groupLabel}>{group.label}</Text>
-                  {group.items.map((item) => (
-                    <View key={`${group.label}-${item.id}`} style={styles.row}>
-                      <View>
+                  {group.items.map((item, index) => (
+                    <View
+                      key={`${group.label}-${item.id}`}
+                      style={[styles.row, index > 0 && styles.rowDivider]}
+                    >
+                      <View style={styles.rowLeft}>
                         <Text style={styles.merchant}>{item.merchant}</Text>
                         <View style={styles.metaRow}>
                           <Text style={styles.category}>{item.category}</Text>
@@ -335,7 +555,11 @@ export default function ExpensesScreen() {
                         </View>
                       </View>
                       <View style={styles.rowRight}>
-                        <Text style={styles.amount}>
+                        <Text
+                          style={styles.amount}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
                           {formatCurrency(item.amount, currency)}
                         </Text>
                         <Text style={styles.date}>{formatShortDate(item.date)}</Text>
@@ -348,6 +572,67 @@ export default function ExpensesScreen() {
           </>
         ) : null}
       </ScrollView>
+
+      <Portal>
+        <Modal
+          visible={budgetModalOpen}
+          onDismiss={() => setBudgetModalOpen(false)}
+          contentContainerStyle={styles.budgetModal}
+        >
+          <Text style={styles.budgetModalTitle}>Set monthly budget</Text>
+          <Text style={styles.budgetModalSubtitle}>
+            Track your spending against a monthly limit.
+          </Text>
+          <TextInput
+            label="Monthly budget"
+            value={budgetValue}
+            onChangeText={setBudgetValue}
+            keyboardType="numeric"
+            mode="outlined"
+            style={styles.budgetInput}
+            outlineColor={theme.colors.border}
+            activeOutlineColor={theme.colors.accent}
+            left={<TextInput.Affix text="$" />}
+          />
+          {budgetError ? <Text style={styles.budgetError}>{budgetError}</Text> : null}
+          <View style={styles.budgetActions}>
+            <Button mode="text" onPress={() => setBudgetModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleSaveBudget}
+              loading={isSavingBudget}
+              buttonColor={theme.colors.primary}
+              textColor="#ffffff"
+            >
+              Save
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
+
+      <DatePickerModal
+        locale="en"
+        mode="single"
+        visible={showStartDatePicker}
+        onDismiss={() => setShowStartDatePicker(false)}
+        date={customStartDate ?? new Date()}
+        onConfirm={handleStartDateConfirm}
+        saveLabel="Confirm"
+        label="Select start date"
+      />
+
+      <DatePickerModal
+        locale="en"
+        mode="single"
+        visible={showEndDatePicker}
+        onDismiss={() => setShowEndDatePicker(false)}
+        date={customEndDate ?? customStartDate ?? new Date()}
+        onConfirm={handleEndDateConfirm}
+        saveLabel="Confirm"
+        label="Select end date"
+      />
     </SafeAreaView>
   )
 }
@@ -460,6 +745,46 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  customRangeCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radii.card,
+    padding: theme.spacing.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    gap: 12,
+    ...theme.shadows.card,
+  },
+  customRangeTitle: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+    color: theme.colors.mutedLight,
+  },
+  customRangeRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  customRangeField: {
+    flex: 1,
+    gap: 6,
+  },
+  customRangeLabel: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
+    color: theme.colors.muted,
+  },
+  customRangeButton: {
+    borderColor: theme.colors.border,
+  },
+  customRangeButtonContent: {
+    justifyContent: 'flex-start',
+  },
+  customRangeHint: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 12,
+    color: theme.colors.muted,
+  },
   chip: {
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
@@ -496,19 +821,103 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     ...theme.shadows.card,
   },
-  row: {
+  budgetCard: {
     backgroundColor: theme.colors.surface,
-    padding: theme.spacing.card,
     borderRadius: theme.radii.card,
+    padding: theme.spacing.card,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    gap: 10,
+    ...theme.shadows.card,
+  },
+  budgetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    ...theme.shadows.card,
+  },
+  budgetLabel: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
+    color: theme.colors.mutedLight,
+  },
+  budgetValue: {
+    fontFamily: theme.fonts.display.regular,
+    fontSize: 22,
+    color: theme.colors.ink,
+    marginTop: 4,
+  },
+  budgetTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: theme.colors.surfaceAlt,
+    overflow: 'hidden',
+  },
+  budgetFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: theme.colors.accent,
+  },
+  budgetStatus: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 12,
+    color: theme.colors.muted,
+  },
+  budgetModal: {
+    backgroundColor: theme.colors.surface,
+    marginHorizontal: 20,
+    borderRadius: theme.radii.cardLarge,
+    padding: 20,
+    gap: 10,
+  },
+  budgetModalTitle: {
+    fontFamily: theme.fonts.display.regular,
+    fontSize: 20,
+    color: theme.colors.ink,
+  },
+  budgetModalSubtitle: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 13,
+    color: theme.colors.muted,
+  },
+  budgetInput: {
+    backgroundColor: theme.colors.surface,
+    marginTop: 8,
+  },
+  budgetError: {
+    fontFamily: theme.fonts.body.medium,
+    fontSize: 12,
+    color: theme.colors.danger,
+  },
+  budgetActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  rowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: 12,
+    marginTop: 12,
   },
   rowRight: {
     alignItems: 'flex-end',
+    width: 110,
+    flexShrink: 0,
+    overflow: 'hidden',
+  },
+  rowLeft: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 12,
   },
   merchant: {
     fontFamily: theme.fonts.body.medium,
@@ -555,6 +964,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.body.medium,
     fontSize: 14,
     color: theme.colors.danger,
+    textAlign: 'right',
   },
   date: {
     fontFamily: theme.fonts.body.regular,

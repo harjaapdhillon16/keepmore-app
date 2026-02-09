@@ -1,5 +1,5 @@
 
-export const API_BASE_URL = 'https://www.keepmore.finance'
+export const API_BASE_URL = 'https://keepmore-web.vercel.app'
 export function apiUrl(path: string) {
   if (path.startsWith('http')) {
     return path

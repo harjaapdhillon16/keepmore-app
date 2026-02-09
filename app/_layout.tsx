@@ -201,6 +201,7 @@ export default function RootLayout() {
               <Stack.Screen name="index" />
               <Stack.Screen name="(auth)" />
               <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="(settings)" />
               <Stack.Screen name="assistant" options={{ presentation: 'modal' }} />
             </Stack>
           </PaperProvider>

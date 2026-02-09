@@ -58,6 +58,7 @@ export function usePlaid() {
   const createLinkToken = useCallback(async (userId: string) => {
     setState((prev) => ({ ...prev, isLoading: true, error: undefined }))
     try {
+      console.log('api called')
       const response = await fetch(apiUrl('/api/plaid/create-link-token'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

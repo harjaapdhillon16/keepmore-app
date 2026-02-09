@@ -37,8 +37,7 @@ const styles = StyleSheet.create({
     ...theme.shadows.card,
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   label: {
@@ -47,6 +46,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     color: theme.colors.mutedLight,
+    marginBottom: 5,
   },
   amount: {
     fontFamily: theme.fonts.display.regular,

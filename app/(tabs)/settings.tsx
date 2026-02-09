@@ -63,7 +63,38 @@ const sections: { title: string; items: SettingsItem[] }[] = [
 
 export default function SettingsScreen() {
   const router = useRouter()
-  const { signOut, isWorking, isSigningOut,user } = useAuth()
+  const { signOut, isWorking, isSigningOut, user } = useAuth()
+
+  const getRouteForLabel = (label: string) => {
+    switch (label) {
+      case 'Profile info':
+        return '/(settings)/profile'
+      case 'Connected accounts':
+        return '/(settings)/connected-accounts'
+      case 'Reconnect banks':
+        return '/(settings)/reconnect-banks'
+      case 'Current plan':
+      case 'Billing date':
+      case 'Manage subscription':
+        return '/(settings)/subscription'
+      case 'Currency':
+      case 'Tax year':
+      case 'Notifications':
+      case 'Face ID':
+        return '/(settings)/preferences'
+      case 'Export data':
+      case 'Delete account':
+      case 'Privacy policy':
+      case 'Terms':
+        return '/(settings)/privacy'
+      case 'Help center':
+      case 'Contact support':
+      case 'Feature requests':
+        return '/(settings)/support'
+      default:
+        return null
+    }
+  }
 
   const handleSignOut = async () => {
     const fn = ()=>{
@@ -93,14 +124,22 @@ export default function SettingsScreen() {
           <Text style={styles.subtitle}>Manage your account, plan, and privacy.</Text>
         </View>
 
-        <View style={styles.profileCard}>
+        <Pressable
+          onPress={() => router.push('/(settings)/profile')}
+          style={({ pressed }) => [
+            styles.profileCard,
+            pressed && styles.rowPressed,
+          ]}
+        >
           <View style={styles.profileRow}>
             <View style={styles.avatar}>
               <Ionicons name="person-outline" size={22} color={theme.colors.ink} />
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>Demo User</Text>
-              <Text style={styles.profileMeta}>harjaap@primedepthlabs.com</Text>
+              <Text style={styles.profileName}>
+                {(user?.user_metadata?.full_name as string | undefined) ?? 'KeepMore User'}
+              </Text>
+              <Text style={styles.profileMeta}>{user?.email ?? 'Sign in to manage profile'}</Text>
             </View>
             <Ionicons
               name="chevron-forward"
@@ -108,7 +147,7 @@ export default function SettingsScreen() {
               color={theme.colors.mutedLight}
             />
           </View>
-        </View>
+        </Pressable>
 
         {sections.map((section) => (
           <View key={section.title} style={styles.section}>
@@ -116,10 +155,18 @@ export default function SettingsScreen() {
             <View style={styles.sectionCard}>
               {section.items.map((item, index) => {
                 const isDanger = item.tone === 'danger'
+                const route = getRouteForLabel(item.label)
                 return (
-                  <View
+                  <Pressable
                     key={item.label}
-                    style={[styles.row, index > 0 && styles.rowDivider]}
+                    onPress={() => {
+                      if (route) router.push(route)
+                    }}
+                    style={({ pressed }) => [
+                      styles.row,
+                      index > 0 && styles.rowDivider,
+                      pressed && styles.rowPressed,
+                    ]}
                   >
                     <View style={styles.rowLeft}>
                       <View style={[styles.iconBadge, isDanger && styles.iconBadgeDanger]}>
@@ -138,7 +185,7 @@ export default function SettingsScreen() {
                       size={18}
                       color={theme.colors.mutedLight}
                     />
-                  </View>
+                  </Pressable>
                 )
               })}
             </View>
@@ -260,6 +307,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 14,
+  },
+  rowPressed: {
+    backgroundColor: theme.colors.surfaceAlt,
   },
   rowDivider: {
     borderTopWidth: 1,

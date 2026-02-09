@@ -184,6 +184,46 @@ const oldMoneyTheme = {
   success: '#2F5233', // Dark sage
 }
 
+const infoDefinitions = {
+  wealth_index: {
+    title: 'Wealth Index',
+    description:
+      'A composite score based on balances, savings rate, cash flow, and liabilities. It uses 12-month average monthly data when available.',
+  },
+  projections: {
+    title: 'Portfolio Projections',
+    description:
+      'Forward-looking estimates based on recent cash flow trends and average monthly behavior across the last 12 months.',
+  },
+  liquidity_runway: {
+    title: 'Liquidity Runway',
+    description:
+      'How many months your current liquid balance could cover at your average monthly spending rate.',
+  },
+  reserve_fund: {
+    title: 'Reserve Fund',
+    description:
+      'Your emergency fund coverage in months based on average monthly expenses.',
+  },
+  savings_rate: {
+    title: 'Savings Rate',
+    description:
+      'Percentage of income kept after spending, calculated using 12-month averages.',
+  },
+  leverage_ratio: {
+    title: 'Leverage Ratio',
+    description:
+      'Debt to income ratio based on recent obligations and average monthly income.',
+  },
+  optimization_priority: {
+    title: 'Optimization Priority',
+    description:
+      'Priority reflects estimated savings impact and urgency based on your recent patterns.',
+  },
+}
+
+type InfoKey = keyof typeof infoDefinitions
+
 const parseNullableNumber = (value: unknown) => {
   if (value === null || value === undefined) return null
   const num = typeof value === 'number' ? value : Number(value)
@@ -246,6 +286,11 @@ const formatRelativeDate = (dateString?: string | null) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+const formatMetricValue = (value: number | null, digits: number) => {
+  if (value === null || !Number.isFinite(value)) return '—'
+  return value.toFixed(digits)
+}
+
 const getHealthGradient = (score: number) => {
   if (score >= 71) return ['#2F5233', '#1B4332']
   if (score >= 41) return ['#C19A6B', '#8B7355']
@@ -265,6 +310,15 @@ const getMetricColor = (value: number, ranges: { good: number; ok: number }, inv
   return oldMoneyTheme.danger
 }
 
+const getMetricColorSafe = (
+  value: number | null,
+  ranges: { good: number; ok: number },
+  inverse = false,
+) => {
+  if (value === null || !Number.isFinite(value)) return oldMoneyTheme.mutedLight
+  return getMetricColor(value, ranges, inverse)
+}
+
 export default function TaxesScreen() {
   const router = useRouter()
   const { user, status } = useAuth()
@@ -281,6 +335,8 @@ export default function TaxesScreen() {
   const [error, setError] = useState<string | null>(null)
 
   const [chatMenuOpen, setChatMenuOpen] = useState(false)
+
+  const [infoKey, setInfoKey] = useState<InfoKey | null>(null)
 
   const [goalFormOpen, setGoalFormOpen] = useState(false)
   const [goalFormMode, setGoalFormMode] = useState<'create' | 'edit'>('create')
@@ -748,6 +804,14 @@ export default function TaxesScreen() {
     setProgressAmount('')
   }
 
+  const openInfo = (key: InfoKey) => {
+    setInfoKey(key)
+  }
+
+  const closeInfo = () => {
+    setInfoKey(null)
+  }
+
   const projections = insights?.projections
   const optimizationsSorted = useMemo(() => {
     const list = insights?.optimizations ?? []
@@ -766,6 +830,55 @@ export default function TaxesScreen() {
   }, [insights?.optimizations])
 
   const keyMetrics = insights?.key_metrics
+
+  const fallbackMetrics = useMemo(() => {
+    const summaryHasData =
+      (summary?.monthly_spending ?? 0) > 0 ||
+      (summary?.monthly_income ?? 0) > 0 ||
+      (summary?.total_balance ?? 0) > 0
+
+    if (!summaryHasData) {
+      return {
+        runway_months: null,
+        emergency_fund_months: null,
+        savings_rate: null,
+        debt_to_income_ratio: null,
+      }
+    }
+
+    const totalBalance = parseNullableNumber(summary?.total_balance)
+    const monthlySpending = parseNullableNumber(summary?.monthly_spending)
+    const savingsRate = parseNullableNumber(summary?.savings_rate)
+
+    const runway =
+      totalBalance !== null && monthlySpending !== null && monthlySpending > 0
+        ? totalBalance / monthlySpending
+        : null
+
+    return {
+      runway_months: runway,
+      emergency_fund_months: runway,
+      savings_rate: savingsRate,
+      debt_to_income_ratio: null,
+    }
+  }, [
+    summary?.monthly_income,
+    summary?.monthly_spending,
+    summary?.savings_rate,
+    summary?.total_balance,
+  ])
+
+  const metricsArePlaceholder = useMemo(() => {
+    if (!keyMetrics) return true
+    return Object.values(keyMetrics).every(
+      (value) => !Number.isFinite(value) || value === 0,
+    )
+  }, [keyMetrics])
+
+  const resolvedMetrics = metricsArePlaceholder ? fallbackMetrics : keyMetrics ?? fallbackMetrics
+  const hasMetricValues = Object.values(resolvedMetrics || {}).some(
+    (value) => Number.isFinite(value) && value !== null,
+  )
 
   const hasFinancialData =
     (summary?.monthly_spending ?? 0) > 0 || (summary?.total_balance ?? 0) > 0
@@ -842,7 +955,16 @@ export default function TaxesScreen() {
               end={{ x: 1, y: 1 }}
               style={styles.healthScoreCard}
             >
-              <Text style={styles.healthScoreLabel}>WEALTH INDEX</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.healthScoreLabel}>WEALTH INDEX</Text>
+                <IconButton
+                  icon="information-outline"
+                  size={16}
+                  onPress={() => openInfo('wealth_index')}
+                  iconColor={oldMoneyTheme.accent}
+                  style={styles.infoButton}
+                />
+              </View>
               <Text style={styles.healthScoreValue}>
                 {Math.round(insights.wealth_analysis.financial_health_score)}
               </Text>
@@ -863,7 +985,16 @@ export default function TaxesScreen() {
         {/* Future Projections */}
         <View style={styles.sectionCard}>
           <View style={styles.decorativeLine} />
-          <Text style={styles.sectionTitle}>Portfolio Projections</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Portfolio Projections</Text>
+            <IconButton
+              icon="information-outline"
+              size={18}
+              onPress={() => openInfo('projections')}
+              iconColor={oldMoneyTheme.accent}
+              style={styles.infoButton}
+            />
+          </View>
           {projections ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {(
@@ -909,87 +1040,137 @@ export default function TaxesScreen() {
           <View style={styles.decorativeLine} />
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Financial Indicators</Text>
-            <Text style={styles.sectionSubtitle}>Essential metrics for wealth preservation</Text>
+            <Text style={styles.sectionSubtitle}>Based on 12-month averages</Text>
           </View>
-          {keyMetrics ? (
+          {hasMetricValues ? (
             <View style={styles.metricsGrid}>
               <View style={styles.metricCard}>
                 <View style={styles.metricHeader}>
-                  <Text style={styles.metricIcon}>⏱</Text>
-                  <Text style={styles.metricLabel}>Liquidity Runway</Text>
+                  <View style={styles.metricHeaderLeft}>
+                    <Text style={styles.metricLabel} numberOfLines={2} ellipsizeMode="tail">
+                      Liquidity Runway
+                    </Text>
+                  </View>
+                  <IconButton
+                    icon="information-outline"
+                    size={14}
+                    onPress={() => openInfo('liquidity_runway')}
+                    iconColor={oldMoneyTheme.accent}
+                    style={styles.infoButton}
+                  />
                 </View>
                 <Text
                   style={[
                     styles.metricValue,
                     {
-                      color: getMetricColor(keyMetrics.runway_months, {
+                      color: getMetricColorSafe(resolvedMetrics.runway_months, {
                         good: 6,
                         ok: 3,
                       }),
                     },
                   ]}
                 >
-                  {keyMetrics.runway_months.toFixed(1)}
+                  {formatMetricValue(resolvedMetrics.runway_months, 1)}
                 </Text>
                 <Text style={styles.metricUnit}>months</Text>
               </View>
               <View style={styles.metricCard}>
                 <View style={styles.metricHeader}>
-                  <Text style={styles.metricIcon}>🛡</Text>
-                  <Text style={styles.metricLabel}>Reserve Fund</Text>
+                  <View style={styles.metricHeaderLeft}>
+                    <Text style={styles.metricLabel} numberOfLines={2} ellipsizeMode="tail">
+                      Reserve Fund
+                    </Text>
+                  </View>
+                  <IconButton
+                    icon="information-outline"
+                    size={14}
+                    onPress={() => openInfo('reserve_fund')}
+                    iconColor={oldMoneyTheme.accent}
+                    style={styles.infoButton}
+                  />
                 </View>
                 <Text
                   style={[
                     styles.metricValue,
                     {
-                      color: getMetricColor(keyMetrics.emergency_fund_months, {
+                      color: getMetricColorSafe(resolvedMetrics.emergency_fund_months, {
                         good: 6,
                         ok: 3,
                       }),
                     },
                   ]}
                 >
-                  {keyMetrics.emergency_fund_months.toFixed(1)}
+                  {formatMetricValue(resolvedMetrics.emergency_fund_months, 1)}
                 </Text>
                 <Text style={styles.metricUnit}>months</Text>
               </View>
               <View style={styles.metricCard}>
                 <View style={styles.metricHeader}>
-                  <Text style={styles.metricIcon}>📊</Text>
-                  <Text style={styles.metricLabel}>Savings Rate</Text>
+                  <View style={styles.metricHeaderLeft}>
+                    <Text style={styles.metricLabel} numberOfLines={2} ellipsizeMode="tail">
+                      Savings Rate
+                    </Text>
+                  </View>
+                  <IconButton
+                    icon="information-outline"
+                    size={14}
+                    onPress={() => openInfo('savings_rate')}
+                    iconColor={oldMoneyTheme.accent}
+                    style={styles.infoButton}
+                  />
                 </View>
                 <Text
                   style={[
                     styles.metricValue,
                     {
-                      color: getMetricColor(keyMetrics.savings_rate, {
+                      color: getMetricColorSafe(resolvedMetrics.savings_rate, {
                         good: 20,
                         ok: 10,
                       }),
                     },
                   ]}
                 >
-                  {keyMetrics.savings_rate.toFixed(0)}
+                  {formatMetricValue(resolvedMetrics.savings_rate, 0)}
                 </Text>
                 <Text style={styles.metricUnit}>percent</Text>
               </View>
               <View style={styles.metricCard}>
                 <View style={styles.metricHeader}>
-                  <Text style={styles.metricIcon}>⚖</Text>
-                  <Text style={styles.metricLabel}>Leverage Ratio</Text>
+                  <View style={styles.metricHeaderLeft}>
+                    <Text style={styles.metricLabel} numberOfLines={2} ellipsizeMode="tail">
+                      Leverage Ratio
+                    </Text>
+                  </View>
+                  <IconButton
+                    icon="information-outline"
+                    size={14}
+                    onPress={() => openInfo('leverage_ratio')}
+                    iconColor={oldMoneyTheme.accent}
+                    style={styles.infoButton}
+                  />
                 </View>
                 <Text
                   style={[
                     styles.metricValue,
                     {
-                      color: getMetricColor(keyMetrics.debt_to_income_ratio * 100, {
+                      color: getMetricColorSafe(
+                        resolvedMetrics.debt_to_income_ratio === null ||
+                          !Number.isFinite(resolvedMetrics.debt_to_income_ratio)
+                          ? null
+                          : resolvedMetrics.debt_to_income_ratio * 100,
+                        {
                         good: 30,
                         ok: 50,
-                      }, true),
+                      },
+                      true,
+                    ),
                     },
                   ]}
                 >
-                  {(keyMetrics.debt_to_income_ratio * 100).toFixed(0)}
+                  {resolvedMetrics.debt_to_income_ratio === null ||
+                  !Number.isFinite(resolvedMetrics.debt_to_income_ratio)
+                    ? '—'
+                    : (resolvedMetrics.debt_to_income_ratio * 100).toFixed(0)}
                 </Text>
                 <Text style={styles.metricUnit}>percent</Text>
               </View>
@@ -1003,7 +1184,16 @@ export default function TaxesScreen() {
         <View style={styles.sectionCard}>
           <View style={styles.decorativeLine} />
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Wealth Optimization Strategies</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Wealth Optimization Strategies</Text>
+              <IconButton
+                icon="information-outline"
+                size={18}
+                onPress={() => openInfo('optimization_priority')}
+                iconColor={oldMoneyTheme.accent}
+                style={styles.infoButton}
+              />
+            </View>
             <Text style={styles.sectionSubtitle}>Curated opportunities for enhanced returns</Text>
           </View>
           {optimizationsSorted.length > 0 ? (
@@ -1265,14 +1455,14 @@ export default function TaxesScreen() {
           )}
 
           <View style={styles.chatMenuActions}>
-            <Button 
+            {/* <Button 
               mode="outlined" 
               onPress={() => { setChatMenuOpen(false); openChat(); }}
               textColor={oldMoneyTheme.primary}
               style={styles.chatMenuButton}
             >
               View All
-            </Button>
+            </Button> */}
             <Button 
               mode="contained" 
               onPress={() => { setChatMenuOpen(false); openChat(); }}
@@ -1763,6 +1953,33 @@ export default function TaxesScreen() {
           ) : null}
         </Modal>
       </Portal>
+
+      <Portal>
+        <Modal
+          visible={infoKey !== null}
+          onDismiss={closeInfo}
+          contentContainerStyle={styles.infoModal}
+        >
+          {infoKey ? (
+            <View style={styles.infoContent}>
+              <Text style={styles.infoTitle}>{infoDefinitions[infoKey].title}</Text>
+              <Text style={styles.infoBody}>{infoDefinitions[infoKey].description}</Text>
+              <Text style={styles.infoDisclaimer}>
+                Educational purposes only. Not financial advice.
+              </Text>
+              <Button
+                mode="contained"
+                onPress={closeInfo}
+                buttonColor={oldMoneyTheme.primary}
+                textColor={oldMoneyTheme.accent}
+                style={styles.infoCta}
+              >
+                Got it
+              </Button>
+            </View>
+          ) : null}
+        </Modal>
+      </Portal>
     </SafeAreaView>
   )
 }
@@ -1863,6 +2080,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  infoButton: {
+    margin: 0,
+  },
   loadingCard: {
     alignItems: 'center',
     gap: 12,
@@ -1955,9 +2180,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
     marginTop: 8,
+    justifyContent: 'space-between',
   },
   metricCard: {
-    width: '47%',
+    flexBasis: '48%',
+    maxWidth: '48%',
     backgroundColor: oldMoneyTheme.surfaceAlt,
     padding: 16,
     borderRadius: 12,
@@ -1967,11 +2194,15 @@ const styles = StyleSheet.create({
   metricHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
     marginBottom: 12,
   },
-  metricIcon: {
-    fontSize: 16,
+  metricHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+    width: "60%",
   },
   metricLabel: {
     fontSize: 11,
@@ -1979,6 +2210,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     fontWeight: '600',
+    flexShrink: 1,
+    minWidth: 0,
   },
   metricValue: {
     fontSize: 28,
@@ -2727,5 +2960,34 @@ const styles = StyleSheet.create({
   detailActionButton: {
     flex: 1,
     borderRadius: 10,
+  },
+  infoModal: {
+    backgroundColor: oldMoneyTheme.surface,
+    marginHorizontal: 20,
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: oldMoneyTheme.border,
+  },
+  infoContent: {
+    gap: 10,
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: oldMoneyTheme.primary,
+  },
+  infoBody: {
+    fontSize: 13,
+    color: oldMoneyTheme.ink,
+    lineHeight: 18,
+  },
+  infoDisclaimer: {
+    fontSize: 11,
+    color: oldMoneyTheme.mutedLight,
+    fontStyle: 'italic',
+  },
+  infoCta: {
+    marginTop: 8,
   },
 })

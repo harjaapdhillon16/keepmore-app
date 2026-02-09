@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ScrollView, StatusBar, StyleSheet, View, Modal, Pressable } from 'react-native'
 import { ActivityIndicator, Button, Text, IconButton, Chip } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
 import NetWorthCard from '../../components/cards/NetWorthCard'
 import InsightCard from '../../components/cards/InsightCard'
 import { theme } from '../../constants/theme'
@@ -56,6 +57,7 @@ type ModalType = 'categories' | 'bills' | 'transaction' | null
 export default function HomeScreen() {
   const { user, status } = useAuth()
   const { transactions, recurring, loading, error } = usePlaidData(user?.id)
+  const router = useRouter()
   const [modalType, setModalType] = useState<ModalType>(null)
   const [selectedTransaction, setSelectedTransaction] = useState<NormalizedTransaction | null>(null)
 
@@ -104,11 +106,11 @@ export default function HomeScreen() {
     'USD'
 
   const {
-    monthExpenses,
-    monthIncome,
+    avgMonthlyExpenses,
+    avgMonthlyIncome,
     netFlow,
-    lastMonthNet,
-    hasLastMonth,
+    netChange,
+    hasPreviousQuarter,
     topCategories,
     largestExpense,
     upcomingBills,
@@ -119,47 +121,62 @@ export default function HomeScreen() {
     allCategories,
   } = useMemo(() => {
     const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+    const startOfWindow = new Date(now.getFullYear(), now.getMonth() - 11, 1)
+    const startOfRecentQuarter = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+    const startOfPreviousQuarter = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+    const endOfPreviousQuarter = new Date(now.getFullYear(), now.getMonth() - 2, 0)
 
-    const posted = normalizedTransactions.filter((tx) => !tx.pending)
-    const expenses = posted.filter((tx) => tx.amount > 0)
-    const income = posted.filter((tx) => tx.amount < 0)
+    const postedAll = normalizedTransactions.filter((tx) => !tx.pending && tx.date)
+    const windowed = postedAll.filter((tx) => tx.date && tx.date >= startOfWindow)
 
-    const monthExpensesList = expenses.filter(
-      (tx) => tx.date && tx.date >= startOfMonth,
-    )
-    const monthIncomeList = income.filter(
-      (tx) => tx.date && tx.date >= startOfMonth,
-    )
-
-    const lastMonthExpensesList = expenses.filter(
-      (tx) => tx.date && tx.date >= startOfLastMonth && tx.date <= endOfLastMonth,
-    )
-    const lastMonthIncomeList = income.filter(
-      (tx) => tx.date && tx.date >= startOfLastMonth && tx.date <= endOfLastMonth,
-    )
+    const expenses = windowed.filter((tx) => tx.amount > 0)
+    const income = windowed.filter((tx) => tx.amount < 0)
 
     const sum = (items: NormalizedTransaction[]) =>
       items.reduce((total, item) => total + item.amount, 0)
 
-    const monthExpensesTotal = sum(monthExpensesList)
-    const monthIncomeTotal = Math.abs(sum(monthIncomeList))
-    const lastMonthExpensesTotal = sum(lastMonthExpensesList)
-    const lastMonthIncomeTotal = Math.abs(sum(lastMonthIncomeList))
+    const totalExpenses = sum(expenses)
+    const totalIncome = Math.abs(sum(income))
 
-    const netFlowTotal = monthIncomeTotal - monthExpensesTotal
-    const lastMonthNetTotal = lastMonthIncomeTotal - lastMonthExpensesTotal
-    const hasLastMonthData =
-      lastMonthExpensesTotal > 0 || lastMonthIncomeTotal > 0
+    const monthsPresent = new Set(
+      windowed
+        .map((tx) => tx.date)
+        .filter(Boolean)
+        .map((date) => `${date?.getFullYear()}-${date?.getMonth()}`),
+    )
+    const divisor = Math.max(monthsPresent.size, 1)
 
-    const change =
-      lastMonthExpensesTotal > 0
-        ? (monthExpensesTotal - lastMonthExpensesTotal) / lastMonthExpensesTotal
-        : null
+    const avgMonthlyExpensesValue = totalExpenses / divisor
+    const avgMonthlyIncomeValue = totalIncome / divisor
 
-    const categoryTotals = monthExpensesList.reduce((acc, tx) => {
+    const netFlowTotal = avgMonthlyIncomeValue - avgMonthlyExpensesValue
+
+    const recentQuarter = postedAll.filter(
+      (tx) => tx.date && tx.date >= startOfRecentQuarter,
+    )
+    const previousQuarter = postedAll.filter(
+      (tx) =>
+        tx.date &&
+        tx.date >= startOfPreviousQuarter &&
+        tx.date <= endOfPreviousQuarter,
+    )
+
+    const recentExpenses = sum(recentQuarter.filter((tx) => tx.amount > 0))
+    const recentIncome = Math.abs(sum(recentQuarter.filter((tx) => tx.amount < 0)))
+    const previousExpenses = sum(previousQuarter.filter((tx) => tx.amount > 0))
+    const previousIncome = Math.abs(
+      sum(previousQuarter.filter((tx) => tx.amount < 0)),
+    )
+
+    const recentNet = recentIncome - recentExpenses
+    const previousNet = previousIncome - previousExpenses
+    const hasPreviousQuarterData = previousExpenses > 0 || previousIncome > 0
+    const netChangeValue = recentNet - previousNet
+
+    const spendChange =
+      previousExpenses > 0 ? (recentExpenses - previousExpenses) / previousExpenses : null
+
+    const categoryTotals = expenses.reduce((acc, tx) => {
       if (!acc[tx.category]) {
         acc[tx.category] = {
           category: tx.category,
@@ -177,7 +194,7 @@ export default function HomeScreen() {
     const allCats = Object.values(categoryTotals).sort((a, b) => b.total - a.total)
     const topCategoryRows = allCats.slice(0, 4).map(c => ({ label: c.category, total: c.total }))
 
-    const largest = monthExpensesList.reduce<NormalizedTransaction | null>(
+    const largest = expenses.reduce<NormalizedTransaction | null>(
       (current, tx) => (!current || tx.amount > current.amount ? tx : current),
       null,
     )
@@ -203,8 +220,7 @@ export default function HomeScreen() {
       0,
     )
 
-    const recent = [...posted]
-      .filter((tx) => tx.date)
+    const recent = [...postedAll]
       .sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0))
       .slice(0, 5)
 
@@ -212,20 +228,20 @@ export default function HomeScreen() {
 
     const insightItems: { title: string; description: string; cta: string }[] = []
 
-    if (change !== null) {
-      const trend = change >= 0 ? 'up' : 'down'
-      const percentage = Math.abs(change * 100).toFixed(0)
+    if (spendChange !== null) {
+      const trend = spendChange >= 0 ? 'up' : 'down'
+      const percentage = Math.abs(spendChange * 100).toFixed(0)
       insightItems.push({
         title: `Spending is ${trend} ${percentage}%`,
-        description: 'Compared with last month based on posted transactions.',
+        description: 'Compared with the prior 3 months.',
         cta: 'Review spend',
       })
     }
 
     if (topCategoryRows[0]) {
       insightItems.push({
-        title: `${topCategoryRows[0].label} leads this month`,
-        description: `${formatCurrency(topCategoryRows[0].total, currency)} spent so far.`,
+        title: `${topCategoryRows[0].label} leads this year`,
+        description: `${formatCurrency(topCategoryRows[0].total, currency)} spent in the last 12 months.`,
         cta: 'View categories',
       })
     }
@@ -248,11 +264,11 @@ export default function HomeScreen() {
     }
 
     return {
-      monthExpenses: monthExpensesTotal,
-      monthIncome: monthIncomeTotal,
+      avgMonthlyExpenses: avgMonthlyExpensesValue,
+      avgMonthlyIncome: avgMonthlyIncomeValue,
       netFlow: netFlowTotal,
-      lastMonthNet: lastMonthNetTotal,
-      hasLastMonth: hasLastMonthData,
+      netChange: netChangeValue,
+      hasPreviousQuarter: hasPreviousQuarterData,
       topCategories: topCategoryRows,
       largestExpense: largest,
       upcomingBills: upcoming,
@@ -264,14 +280,13 @@ export default function HomeScreen() {
     }
   }, [currency, normalizedRecurring, normalizedTransactions])
 
-  const netChange = netFlow - lastMonthNet
-  const netChangeLabel = hasLastMonth
-    ? `${netChange >= 0 ? '+' : ''}${formatCurrency(netChange, currency)} vs last month`
-    : 'No previous month data'
+  const netChangeLabel = hasPreviousQuarter
+    ? `${netChange >= 0 ? '+' : ''}${formatCurrency(netChange, currency)} vs prior 3 months`
+    : 'No previous quarter data'
 
   const formattedNetFlow = formatCurrency(netFlow, currency)
-  const formattedMonthExpenses = formatCurrency(monthExpenses, currency)
-  const formattedMonthIncome = formatCurrency(monthIncome, currency)
+  const formattedMonthExpenses = formatCurrency(avgMonthlyExpenses, currency)
+  const formattedMonthIncome = formatCurrency(avgMonthlyIncome, currency)
   const formattedUpcomingTotal = formatCurrency(upcomingTotal, currency)
 
   const hasData = normalizedTransactions.length > 0 || normalizedRecurring.length > 0
@@ -313,7 +328,7 @@ export default function HomeScreen() {
           <Text style={styles.headerTitle}>Your finances</Text>
           <Text style={styles.headerSubtitle}>
             {user
-              ? `Latest activity ${lastActivityDate ? formatLongDate(lastActivityDate) : 'this month'}`
+              ? `Latest activity ${lastActivityDate ? formatLongDate(lastActivityDate) : 'in the last 12 months'}`
               : 'Sign in to see your latest activity.'}
           </Text>
         </View>
@@ -352,21 +367,21 @@ export default function HomeScreen() {
         {user && hasData ? (
           <>
             <NetWorthCard
-              label="Monthly cash flow"
+              label="Avg monthly cash flow (12 mo)"
               amount={formattedNetFlow}
               changeLabel={netChangeLabel}
             />
 
             <View style={styles.summaryGrid}>
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryLabel}>Spent this month</Text>
+                <Text style={styles.summaryLabel}>Avg monthly spend</Text>
                 <Text style={styles.summaryValue}>{formattedMonthExpenses}</Text>
-                <Text style={styles.summaryMeta}>Posted expenses</Text>
+                <Text style={styles.summaryMeta}>12-month average</Text>
               </View>
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryLabel}>Income this month</Text>
+                <Text style={styles.summaryLabel}>Avg monthly income</Text>
                 <Text style={styles.summaryValue}>{formattedMonthIncome}</Text>
-                <Text style={styles.summaryMeta}>Credits received</Text>
+                <Text style={styles.summaryMeta}>12-month average</Text>
               </View>
               <View style={styles.summaryCardWide}>
                 <Text style={styles.summaryLabel}>Upcoming bills (30 days)</Text>
@@ -405,14 +420,14 @@ export default function HomeScreen() {
                     style={styles.listRow}
                     onPress={() => setModalType('bills')}
                   >
-                    <View>
+                    <View style={styles.listLeft}>
                       <Text style={styles.listTitle}>{bill.merchant}</Text>
                       <Text style={styles.listMeta}>
                         {bill.category} - {bill.frequency ? humanizeLabel(bill.frequency) : 'One-time'}
                       </Text>
                     </View>
                     <View style={styles.listRight}>
-                      <Text style={styles.listAmount}>
+                      <Text style={styles.listAmount} numberOfLines={1} ellipsizeMode="tail">
                         {formatCurrency(bill.amount, currency)}
                       </Text>
                       <Text style={styles.listMeta}>{formatShortDate(bill.nextDate)}</Text>
@@ -423,7 +438,7 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Top categories</Text>
+              <Text style={styles.sectionTitle}>Top categories (12 mo)</Text>
             </View>
             <View style={styles.listCard}>
               {topCategories.length === 0 ? (
@@ -442,7 +457,7 @@ export default function HomeScreen() {
                     >
                       <View style={styles.categoryHeader}>
                         <Text style={styles.listTitle}>{category.label}</Text>
-                        <Text style={styles.listAmount}>
+                        <Text style={styles.listAmount} numberOfLines={1} ellipsizeMode="tail">
                           {formatCurrency(category.total, currency)}
                         </Text>
                       </View>
@@ -472,7 +487,7 @@ export default function HomeScreen() {
                     style={styles.listRow}
                     onPress={() => handleTransactionPress(tx)}
                   >
-                    <View>
+                    <View style={styles.listLeft}>
                       <Text style={styles.listTitle}>{tx.merchant}</Text>
                       <Text style={styles.listMeta}>
                         {tx.category} - {formatShortDate(tx.date)}
@@ -484,6 +499,8 @@ export default function HomeScreen() {
                           styles.listAmount,
                           tx.amount < 0 && styles.listAmountPositive,
                         ]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
                       >
                         {formatCurrency(tx.amount, currency)}
                       </Text>
@@ -496,6 +513,12 @@ export default function HomeScreen() {
                   </Pressable>
                 ))
               )}
+            </View>
+
+            <View style={styles.sectionHeader}>
+              <Button mode="text" onPress={() => router.push('/(tabs)/expenses')}>
+                See all transactions
+              </Button>
             </View>
 
             {largestExpense ? (
@@ -533,7 +556,7 @@ export default function HomeScreen() {
                 {formatCurrency(totalSpending, currency)}
               </Text>
               <Text style={styles.modalSummaryMeta}>
-                Across {allCategories.length} categories this month
+                Across {allCategories.length} categories in the last 12 months
               </Text>
             </View>
 
@@ -940,12 +963,21 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.body.medium,
     fontSize: 14,
     color: theme.colors.danger,
+    textAlign: 'right',
   },
   listAmountPositive: {
     color: theme.colors.accent,
   },
   listRight: {
     alignItems: 'flex-end',
+    width: 110,
+    flexShrink: 0,
+    overflow: 'hidden',
+  },
+  listLeft: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 12,
   },
   emptyListText: {
     fontFamily: theme.fonts.body.regular,
