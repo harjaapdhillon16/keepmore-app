@@ -101,8 +101,10 @@ export default function WowMomentScreen() {
     })
   }, [insights, loadInsights, loadSummary, summary, user?.id])
 
-  const totalBalance = summary?.total_balance ?? 0
-  const monthlySpending = summary?.monthly_spending ?? 0
+  const totalBalance =
+    typeof summary?.total_balance === 'number' ? summary.total_balance : null
+  const monthlySpending =
+    typeof summary?.monthly_spending === 'number' ? summary.monthly_spending : null
   const hasSummary = Boolean(summary)
 
   const categoryRows = useMemo(() => {
@@ -140,7 +142,7 @@ export default function WowMomentScreen() {
             <ActivityIndicator size="small" color={theme.colors.accent} />
           ) : (
             <Text style={styles.cardValue}>
-              {hasSummary ? formatCurrency(totalBalance) : '--'}
+              {hasSummary && totalBalance !== null ? formatCurrency(totalBalance) : '--'}
             </Text>
           )}
           <Text style={styles.cardMeta}>
@@ -156,7 +158,9 @@ export default function WowMomentScreen() {
             <ActivityIndicator size="small" color={theme.colors.accent} />
           ) : (
             <Text style={styles.sectionValue}>
-              {hasSummary ? formatCurrency(monthlySpending) : '--'}
+              {hasSummary && monthlySpending !== null
+                ? formatCurrency(monthlySpending)
+                : '--'}
             </Text>
           )}
         </View>
