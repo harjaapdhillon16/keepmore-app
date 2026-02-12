@@ -15,6 +15,7 @@ import {
 import { configureFonts, MD3LightTheme, PaperProvider } from 'react-native-paper'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { theme as appTheme } from '../constants/theme'
+import { APP_VERSION_NUMBER } from '../constants/appVersion'
 import { AuthProvider } from '../contexts/AuthContext'
 import { useScreenTracking } from '../hooks/useScreenTracking'
 import { initTelemetry } from '../lib/telemetry'
@@ -22,7 +23,6 @@ import { supabase } from '../lib/supabase'
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined)
 
-const APP_VERSION_NUMBER = 1.0
 const APP_STORE_URL = 'https://apps.apple.com/app/id0000000000'
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.priyanshukumar18.keepmore'
 

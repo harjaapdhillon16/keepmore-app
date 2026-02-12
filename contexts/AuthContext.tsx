@@ -24,6 +24,10 @@ type AuthState = {
 
 type AuthContextValue = AuthState & {
   signInWithApple: () => Promise<{ success: boolean; userId?: string }>
+  signInWithPassword: (
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; userId?: string }>
   sendEmailOtp: (email: string) => Promise<{ success: boolean }>
   verifyEmailOtp: (
     email: string,
@@ -289,6 +293,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // -----------------------------
+  // PASSWORD SIGN IN
+  // -----------------------------
+  const signInWithPassword = async (email: string, password: string) => {
+    setIsWorking(true)
+    setError(undefined)
+
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (signInError || !data.user) {
+        throw signInError || new Error('Unable to sign in.')
+      }
+
+      const nextUser = data.user ?? data.session?.user ?? null
+      if (!nextUser) {
+        throw new Error('Missing user after sign in.')
+      }
+
+      setUser(nextUser)
+      setStatus('authenticated')
+      await AsyncStorage.setItem(cachedUserKey, JSON.stringify(nextUser))
+      setSession(null)
+      void logLogin('password', nextUser.id)
+
+      return { success: true, userId: nextUser.id }
+    } catch (err) {
+      setError(getErrorMessage(err, 'Unable to sign in with password.'))
+      logError(err, 'Auth: Password sign-in failed')
+      return { success: false }
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  // -----------------------------
   // SIGN OUT
   // -----------------------------
   const signOut = async (fn: () => {}) => {
@@ -324,6 +366,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isWorking,
         isSigningOut,
         signInWithApple,
+        signInWithPassword,
         sendEmailOtp,
         verifyEmailOtp,
         signOut,

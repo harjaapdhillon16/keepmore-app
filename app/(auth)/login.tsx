@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
+import { APP_VERSION_NUMBER } from '../../constants/appVersion'
 import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '../../lib/supabase'
 import { getPostSignInRoute } from '../../utils/postSignIn'
 
 export default function LoginScreen() {
@@ -13,6 +15,39 @@ export default function LoginScreen() {
   const { signInWithApple, isWorking, error, user } = useAuth()
   const [isRouting, setIsRouting] = useState(false)
   const [routingError, setRoutingError] = useState<string | null>(null)
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadReviewFlag = async () => {
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('app_version')
+          .select('is_apple_review')
+          .eq('version_number', APP_VERSION_NUMBER)
+          .maybeSingle()
+
+        if (fetchError) {
+          throw fetchError
+        }
+
+        if (isMounted) {
+          setShowPasswordLogin(Boolean(data?.is_apple_review))
+        }
+      } catch {
+        if (isMounted) {
+          setShowPasswordLogin(false)
+        }
+      }
+    }
+
+    void loadReviewFlag()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const handlePostSignIn = async (userId?: string) => {
     setRoutingError(null)
@@ -78,6 +113,22 @@ export default function LoginScreen() {
           >
             Continue with Email
           </Button>
+          {showPasswordLogin ? (
+            <Button
+              mode="outlined"
+              textColor={theme.colors.ink}
+              style={styles.secondaryButton}
+              contentStyle={styles.buttonContent}
+              labelStyle={styles.secondaryLabel}
+              icon={() => (
+                <Ionicons name="lock-closed-outline" size={18} color={theme.colors.ink} />
+              )}
+              onPress={() => router.push('/(auth)/password')}
+              disabled={isWorking || isRouting}
+            >
+              Continue with Password
+            </Button>
+          ) : null}
         </View>
 
         <View style={styles.footer}>
