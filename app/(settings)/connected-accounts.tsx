@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Alert, ScrollView, StyleSheet, View } from 'react-native'
 import { ActivityIndicator, Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -14,58 +14,25 @@ type PlaidItem = {
   last_synced_at?: string | null
 }
 
-type PlaidAccount = {
-  id: string
-  plaid_item_id: string
-  name: string
-  official_name?: string | null
-  subtype?: string | null
-  type?: string | null
-  mask?: string | null
-  balances?: unknown
-}
-
-const formatBalance = (balances?: unknown) => {
-  if (!balances) return null
-  try {
-    const parsed = typeof balances === 'string' ? JSON.parse(balances) : balances
-    const current = Number(parsed?.current ?? parsed?.available ?? 0)
-    if (!Number.isFinite(current)) return null
-    return current
-  } catch {
-    return null
-  }
-}
-
 export default function ConnectedAccountsScreen() {
   const { user } = useAuth()
   const { openLinkFlow, isLoading, error: linkError } = usePlaid()
   const [items, setItems] = useState<PlaidItem[]>([])
-  const [accounts, setAccounts] = useState<PlaidAccount[]>([])
   const [loading, setLoading] = useState(false)
 
   const loadAccounts = useCallback(async () => {
     if (!user?.id) return
     setLoading(true)
     try {
-      const [itemsResult, accountsResult] = await Promise.all([
-        supabase
-          .from('plaid_items')
-          .select('id, institution_name, last_synced_at, created_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('plaid_accounts')
-          .select('id, plaid_item_id, name, official_name, subtype, type, mask, balances')
-          .eq('user_id', user.id)
-          .order('name', { ascending: true }),
-      ])
+      const itemsResult = await supabase
+        .from('plaid_items')
+        .select('id, institution_name, last_synced_at, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
 
       if (itemsResult.error) throw itemsResult.error
-      if (accountsResult.error) throw accountsResult.error
 
       setItems(itemsResult.data ?? [])
-      setAccounts(accountsResult.data ?? [])
     } catch (err) {
       Alert.alert('Unable to load accounts', err instanceof Error ? err.message : 'Try again.')
     } finally {
@@ -76,16 +43,6 @@ export default function ConnectedAccountsScreen() {
   useEffect(() => {
     void loadAccounts()
   }, [loadAccounts])
-
-  const accountsByItem = useMemo(() => {
-    return accounts.reduce((acc, account) => {
-      if (!acc[account.plaid_item_id]) {
-        acc[account.plaid_item_id] = []
-      }
-      acc[account.plaid_item_id].push(account)
-      return acc
-    }, {} as Record<string, PlaidAccount[]>)
-  }, [accounts])
 
   const handleReconnect = () => {
     if (!user?.id) return
@@ -147,20 +104,17 @@ export default function ConnectedAccountsScreen() {
         {loading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={theme.colors.accent} />
-            <Text style={styles.loadingText}>Loading accounts...</Text>
+            <Text style={styles.loadingText}>Loading institutions...</Text>
           </View>
         ) : null}
 
         {items.length === 0 && !loading ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>No connected accounts</Text>
-            <Text style={styles.emptySubtitle}>
-              Connect a bank to see balances and activity.
-            </Text>
+            <Text style={styles.emptySubtitle}>Connect a bank to manage institutions.</Text>
           </View>
         ) : (
           items.map((item) => {
-            const itemAccounts = accountsByItem[item.id] ?? []
             return (
               <View key={item.id} style={styles.itemCard}>
                 <View style={styles.itemHeader}>
@@ -182,38 +136,6 @@ export default function ConnectedAccountsScreen() {
                     Disconnect
                   </Button>
                 </View>
-
-                {itemAccounts.length === 0 ? (
-                  <Text style={styles.emptyAccounts}>No accounts found for this item.</Text>
-                ) : (
-                  itemAccounts.map((account, index) => {
-                    const balance = formatBalance(account.balances)
-                    return (
-                      <View
-                        key={account.id}
-                        style={[styles.accountRow, index > 0 && styles.accountDivider]}
-                      >
-                        <View>
-                          <Text style={styles.accountName}>
-                            {account.official_name ?? account.name}
-                          </Text>
-                          <Text style={styles.accountMeta}>
-                            {account.subtype ?? account.type ?? 'Account'}
-                            {account.mask ? ` • ${account.mask}` : ''}
-                          </Text>
-                        </View>
-                        {balance !== null ? (
-                          <Text style={styles.accountBalance}>
-                            {balance.toLocaleString('en-US', {
-                              style: 'currency',
-                              currency: 'USD',
-                            })}
-                          </Text>
-                        ) : null}
-                      </View>
-                    )
-                  })
-                )}
               </View>
             )
           })
@@ -305,38 +227,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.muted,
     marginTop: 4,
-  },
-  emptyAccounts: {
-    fontFamily: theme.fonts.body.regular,
-    fontSize: 13,
-    color: theme.colors.muted,
-  },
-  accountRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  accountDivider: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingTop: 12,
-    marginTop: 12,
-  },
-  accountName: {
-    fontFamily: theme.fonts.body.medium,
-    fontSize: 14,
-    color: theme.colors.ink,
-  },
-  accountMeta: {
-    fontFamily: theme.fonts.body.regular,
-    fontSize: 12,
-    color: theme.colors.mutedLight,
-    marginTop: 4,
-  },
-  accountBalance: {
-    fontFamily: theme.fonts.body.medium,
-    fontSize: 14,
-    color: theme.colors.accent,
   },
 })

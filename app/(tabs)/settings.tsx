@@ -36,16 +36,12 @@ const sections: { title: string; items: SettingsItem[] }[] = [
   {
     title: 'Preferences',
     items: [
-      { label: 'Currency', icon: 'cash-outline' },
-      { label: 'Tax year', icon: 'calculator-outline' },
       { label: 'Notifications', icon: 'notifications-outline' },
-      { label: 'Face ID', icon: 'scan-outline' },
     ],
   },
   {
     title: 'Data and privacy',
     items: [
-      { label: 'Export data', icon: 'download-outline' },
       { label: 'Delete account', icon: 'trash-outline', tone: 'danger' },
       { label: 'Privacy policy', icon: 'lock-closed-outline' },
       { label: 'Terms', icon: 'document-text-outline' },
@@ -77,12 +73,8 @@ export default function SettingsScreen() {
       case 'Billing date':
       case 'Manage subscription':
         return '/(settings)/subscription'
-      case 'Currency':
-      case 'Tax year':
       case 'Notifications':
-      case 'Face ID':
         return '/(settings)/preferences'
-      case 'Export data':
       case 'Delete account':
       case 'Privacy policy':
       case 'Terms':
