@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AuthLegalLinks from '../../components/AuthLegalLinks'
 import { chatApiUrl } from '../../constants/api'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
@@ -206,6 +207,8 @@ export default function WowMomentScreen() {
         >
           See Full Insights
         </Button>
+
+        <AuthLegalLinks align="left" />
       </ScrollView>
     </SafeAreaView>
   )

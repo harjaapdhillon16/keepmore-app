@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AuthLegalLinks from '../../components/AuthLegalLinks'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
 import { useCurrency } from '../../contexts/CurrencyContext'
@@ -128,6 +129,8 @@ export default function PlaidConnectScreen() {
               </Pressable>
             ))}
           </View>
+
+          <AuthLegalLinks />
         </View>
       </SafeAreaView>
     )
@@ -226,6 +229,8 @@ export default function PlaidConnectScreen() {
         <Text style={styles.altNote}>
           Plaid is available for the United States and Canada only. Statements work worldwide.
         </Text>
+
+        <AuthLegalLinks />
       </ScrollView>
     </SafeAreaView>
   )

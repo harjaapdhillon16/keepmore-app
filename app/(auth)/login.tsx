@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AuthLegalLinks from '../../components/AuthLegalLinks'
 import { theme } from '../../constants/theme'
 import { APP_VERSION_NUMBER } from '../../constants/appVersion'
 import { useAuth } from '../../contexts/AuthContext'
@@ -134,9 +135,7 @@ export default function LoginScreen() {
         <View style={styles.footer}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {routingError ? <Text style={styles.error}>{routingError}</Text> : null}
-          <Text style={styles.legal}>
-            By continuing, you agree to Terms and Privacy Policy.
-          </Text>
+          <AuthLegalLinks align="left" variant="agreement" />
           <Text style={styles.loginHint}>Already have account? Login</Text>
         </View>
       </ScrollView>
@@ -200,11 +199,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.body.medium,
     fontSize: 12,
     color: theme.colors.danger,
-  },
-  legal: {
-    fontFamily: theme.fonts.body.regular,
-    fontSize: 12,
-    color: theme.colors.mutedLight,
   },
   loginHint: {
     fontFamily: theme.fonts.body.medium,

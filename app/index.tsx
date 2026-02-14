@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ScrollView, StatusBar, StyleSheet, View } from 'react-native'
 import { ActivityIndicator, Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AuthLegalLinks from '../components/AuthLegalLinks'
 import { theme } from '../constants/theme'
 import { useAuth } from '../contexts/AuthContext'
 import { getPostSignInRoute } from '../utils/postSignIn'
@@ -100,6 +101,8 @@ export default function AppIndexScreen() {
             <Text style={styles.routingText}>Loading your account...</Text>
           </View>
         ) : null}
+
+        <AuthLegalLinks align="left" />
       </ScrollView>
     </SafeAreaView>
   )

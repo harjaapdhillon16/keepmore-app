@@ -6,6 +6,7 @@ import { ActivityIndicator, Text } from 'react-native-paper'
 import Purchases, { PurchasesOffering } from 'react-native-purchases'
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AuthLegalLinks from '../../components/AuthLegalLinks'
 import { theme } from '../../constants/theme'
 
 const features = [
@@ -170,6 +171,10 @@ export default function PaywallScreen() {
             </Pressable>
           )}
         </View>
+
+        <View style={styles.legalLinks}>
+          <AuthLegalLinks />
+        </View>
       </View>
     </SafeAreaView>
   )
@@ -296,5 +301,8 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.body.medium,
     fontSize: 16,
     color: '#ffffff',
+  },
+  legalLinks: {
+    marginTop: 18,
   },
 })

@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AuthLegalLinks from '../../components/AuthLegalLinks'
 import { theme } from '../../constants/theme'
 
 export default function TrialConfirmationScreen() {
@@ -54,6 +55,8 @@ export default function TrialConfirmationScreen() {
         >
           Start Using KeepMore
         </Button>
+
+        <AuthLegalLinks />
       </ScrollView>
     </SafeAreaView>
   )

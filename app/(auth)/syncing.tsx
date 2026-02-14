@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { apiUrl, chatApiUrl } from '../../constants/api'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AuthLegalLinks from '../../components/AuthLegalLinks'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
 import { useCurrency } from '../../contexts/CurrencyContext'
@@ -209,6 +210,8 @@ export default function SyncingScreen() {
             Try Again
           </Button>
         ) : null}
+
+        <AuthLegalLinks />
       </View>
     </SafeAreaView>
   )

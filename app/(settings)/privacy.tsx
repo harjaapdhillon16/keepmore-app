@@ -129,10 +129,10 @@ export default function PrivacySettingsScreen() {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Legal</Text>
-          <Button mode="text" onPress={() => Linking.openURL('https://keepmore.finance/privacy')}>
+          <Button mode="text" onPress={() => Linking.openURL('https://www.keepmore.finance/privacy')}>
             Privacy policy
           </Button>
-          <Button mode="text" onPress={() => Linking.openURL('https://keepmore.finance/terms')}>
+          <Button mode="text" onPress={() => Linking.openURL('https://www.keepmore.finance/terms')}>
             Terms of service
           </Button>
         </View>

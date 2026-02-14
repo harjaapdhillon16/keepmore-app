@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { Button, Text, TextInput } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AuthLegalLinks from '../../components/AuthLegalLinks'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
 import { getPostSignInRoute } from '../../utils/postSignIn'
@@ -160,6 +161,8 @@ export default function EmailOtpAuthScreen() {
             </Button>
           </>
         )}
+
+        <AuthLegalLinks align="left" />
       </ScrollView>
     </SafeAreaView>
   )
