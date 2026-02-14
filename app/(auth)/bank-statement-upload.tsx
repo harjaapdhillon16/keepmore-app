@@ -1,13 +1,14 @@
+import * as DocumentPicker from 'expo-document-picker'
+import * as FileSystem from 'expo-file-system/legacy'
 import { useRouter } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { Linking, ScrollView, StyleSheet, View } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import * as DocumentPicker from 'expo-document-picker'
-import * as FileSystem from 'expo-file-system'
 import { chatApiUrl } from '../../constants/api'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCurrency } from '../../contexts/CurrencyContext'
 
 const monthOptions = [6, 12] as const
 
@@ -16,6 +17,7 @@ const MAX_FILE_BYTES = 15 * 1024 * 1024
 export default function BankStatementUploadScreen() {
   const router = useRouter()
   const { user } = useAuth()
+  const { refresh: refreshCurrency } = useCurrency()
   const [months, setMonths] = useState<(typeof monthOptions)[number]>(6)
   const [file, setFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -63,23 +65,42 @@ export default function BankStatementUploadScreen() {
       const fileBase64 = await FileSystem.readAsStringAsync(file.uri, {
         encoding: FileSystem.EncodingType.Base64,
       })
+      if (!fileBase64) {
+        throw new Error('Unable to read file data. Please try again.')
+      }
 
       const response = await fetch(chatApiUrl('/api/bank-statements/upload'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            statementMonths: months,
-            fileName: file.name ?? 'statement',
-            fileType: file.mimeType ?? 'application/pdf',
-            fileBase64,
-          }),
+        body: JSON.stringify({
+          userId: user.id,
+          statementMonths: months,
+          fileName: file.name ?? 'statement',
+          fileType: file.mimeType ?? 'application/pdf',
+          fileBase64,
+        }),
       })
 
-      const payload = await response.json().catch(() => null)
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error ?? 'Upload failed.')
+      const responseText = await response.text()
+      let payload: { success?: boolean; error?: string; message?: string } | null = null
+      if (responseText) {
+        try {
+          payload = JSON.parse(responseText)
+        } catch {
+          payload = null
+        }
       }
+      if (!response.ok || !payload?.success) {
+        const serverMessage =
+          payload?.error ?? payload?.message ?? (responseText || null)
+        const statusLabel = `${response.status}${response.statusText ? ` ${response.statusText}` : ''}`
+        const message = serverMessage
+          ? `Upload failed (${statusLabel}). ${serverMessage}`
+          : `Upload failed (${statusLabel}).`
+        throw new Error(message)
+      }
+
+      await refreshCurrency()
 
       const summaryParam = encodeURIComponent(
         JSON.stringify(payload.previewSummary ?? {}),
@@ -171,6 +192,16 @@ export default function BankStatementUploadScreen() {
 
         <Text style={styles.privacyNote}>
           Available worldwide. We delete your statement after processing.
+        </Text>
+        <Text style={styles.unlockNote}>
+          If your PDF is password protected, go to{' '}
+          <Text
+            style={styles.linkText}
+            onPress={() => Linking.openURL('https://www.ilovepdf.com/unlock_pdf')}
+          >
+            ilovepdf.com/unlock_pdf
+          </Text>{' '}
+          to unlock it, then upload it.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -264,5 +295,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.mutedLight,
     textAlign: 'center',
+  },
+  unlockNote: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 12,
+    color: theme.colors.muted,
+    textAlign: 'center',
+  },
+  linkText: {
+    color: '#2563eb',
+    textDecorationLine: 'underline',
   },
 })

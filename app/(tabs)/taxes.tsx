@@ -20,6 +20,7 @@ import { DatePickerModal } from 'react-native-paper-dates'
 import { chatApiUrl } from '../../constants/api'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCurrency } from '../../contexts/CurrencyContext'
 import { supabase } from '../../lib/supabase'
 import { logEvent, logError } from '../../lib/telemetry'
 
@@ -241,26 +242,6 @@ const isExpired = (expiresAt?: string) => {
   return new Date(expiresAt).getTime() < Date.now()
 }
 
-const formatCurrency = (value: number | null) => {
-  if (value === null) return 'N/A'
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
-}
-
-const formatCurrencyLoose = (value: number | null) => {
-  if (value === null) return 'N/A'
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value)
-}
-
 const formatDate = (dateString?: string | null) => {
   if (!dateString) return 'No deadline'
   const date = new Date(dateString)
@@ -322,6 +303,7 @@ const getMetricColorSafe = (
 export default function TaxesScreen() {
   const router = useRouter()
   const { user, status } = useAuth()
+  const { currency } = useCurrency()
 
   const [summary, setSummary] = useState<FinancialSummary | null>(null)
   const [insights, setInsights] = useState<FinancialInsights | null>(null)
@@ -357,6 +339,28 @@ export default function TaxesScreen() {
   const fabScale = useRef(new Animated.Value(1)).current
 
   const canChat = status === 'authenticated' && Boolean(user?.id)
+
+  const currencyCode = currency || 'USD'
+
+  const formatCurrency = (value: number | null) => {
+    if (value === null) return 'N/A'
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value)
+  }
+
+  const formatCurrencyLoose = (value: number | null) => {
+    if (value === null) return 'N/A'
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(value)
+  }
 
   const loadSummary = useCallback(async () => {
     if (!user?.id) return

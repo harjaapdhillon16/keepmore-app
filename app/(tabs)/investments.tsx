@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { apiUrl } from '../../constants/api'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCurrency } from '../../contexts/CurrencyContext'
 import { useInvestmentItems } from '../../hooks/useInvestmentItems'
 import { useInvestments } from '../../hooks/useInvestments'
 import { useInvestmentsLink } from '../../hooks/useInvestmentsLink'
@@ -36,6 +37,7 @@ type AccountDetail = {
 
 export default function InvestmentsScreen() {
   const { user, status } = useAuth()
+  const { currency: userCurrency, source: currencySource } = useCurrency()
   const { holdings, loading, error, refresh } = useInvestments(user?.id)
   const {
     hasLinkedItem,
@@ -108,8 +110,12 @@ export default function InvestmentsScreen() {
     })
   }, [holdings])
 
+  const inferredCurrency =
+    normalizedHoldings.find((holding) => holding.currency)?.currency ?? null
   const currency =
-    normalizedHoldings.find((holding) => holding.currency)?.currency ?? 'USD'
+    currencySource === 'default' || currencySource === 'unknown'
+      ? inferredCurrency ?? userCurrency
+      : userCurrency
 
   const {
     totalValue,

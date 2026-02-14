@@ -7,6 +7,7 @@ import { apiUrl, chatApiUrl } from '../../constants/api'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCurrency } from '../../contexts/CurrencyContext'
 import { logError } from '../../lib/telemetry'
 
 const steps = [
@@ -39,6 +40,7 @@ type PlaidSyncPayload = {
 export default function SyncingScreen() {
   const router = useRouter()
   const { user } = useAuth()
+  const { refresh: refreshCurrency } = useCurrency()
   const [progress, setProgress] = useState(12)
   const [error, setError] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
@@ -71,6 +73,7 @@ export default function SyncingScreen() {
       }
 
       setProgress(steps[0].doneAt)
+      await refreshCurrency()
 
       const accountsCount =
         plaidPayload?.itemResults?.reduce(
@@ -144,7 +147,7 @@ export default function SyncingScreen() {
     } finally {
       setIsRunning(false)
     }
-  }, [router, user?.id])
+  }, [refreshCurrency, router, user?.id])
 
   useEffect(() => {
     if (!user?.id || hasStarted.current) return

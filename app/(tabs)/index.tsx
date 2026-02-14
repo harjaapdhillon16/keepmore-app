@@ -7,6 +7,7 @@ import NetWorthCard from '../../components/cards/NetWorthCard'
 import InsightCard from '../../components/cards/InsightCard'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCurrency } from '../../contexts/CurrencyContext'
 import { usePlaidData } from '../../hooks/usePlaidData'
 import {
   formatCurrency,
@@ -56,6 +57,7 @@ type ModalType = 'categories' | 'bills' | 'transaction' | null
 
 export default function HomeScreen() {
   const { user, status } = useAuth()
+  const { currency: userCurrency, source: currencySource } = useCurrency()
   const { transactions, recurring, loading, error } = usePlaidData(user?.id)
   const router = useRouter()
   const [modalType, setModalType] = useState<ModalType>(null)
@@ -101,9 +103,13 @@ export default function HomeScreen() {
     })
   }, [recurring])
 
-  const currency =
+  const inferredCurrency =
     normalizedTransactions.find((transaction) => transaction.currency)?.currency ??
-    'USD'
+    null
+  const currency =
+    currencySource === 'default' || currencySource === 'unknown'
+      ? inferredCurrency ?? userCurrency
+      : userCurrency
 
   const {
     avgMonthlyExpenses,

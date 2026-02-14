@@ -6,11 +6,13 @@ import { Button, Text } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCurrency } from '../../contexts/CurrencyContext'
 import { usePlaid } from '../../hooks/usePlaid'
 
 export default function PlaidConnectScreen() {
   const router = useRouter()
   const { user } = useAuth()
+  const { setCurrency } = useCurrency()
   const { openLinkFlow, isLoading, error } = usePlaid()
   const [linked, setLinked] = useState(false)
   const [region, setRegion] = useState<'US' | 'CA' | 'OTHER' | null>(null)
@@ -69,6 +71,15 @@ export default function PlaidConnectScreen() {
     )
   }
 
+  const handleRegionSelect = (value: 'US' | 'CA' | 'OTHER') => {
+    setRegion(value)
+    if (value === 'US') {
+      void setCurrency('USD', { source: 'manual' })
+    } else if (value === 'CA') {
+      void setCurrency('CAD', { source: 'manual' })
+    }
+  }
+
   if (!region) {
     return (
       <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
@@ -101,7 +112,7 @@ export default function PlaidConnectScreen() {
             ].map((option) => (
               <Pressable
                 key={option.value}
-                onPress={() => setRegion(option.value as 'US' | 'CA' | 'OTHER')}
+                onPress={() => handleRegionSelect(option.value as 'US' | 'CA' | 'OTHER')}
                 style={({ pressed }) => [
                   styles.countryCard,
                   pressed && styles.countryCardPressed,

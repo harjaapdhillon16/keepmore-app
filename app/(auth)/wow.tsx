@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { chatApiUrl } from '../../constants/api'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCurrency } from '../../contexts/CurrencyContext'
 import { logError } from '../../lib/telemetry'
 import { formatCurrency, humanizeLabel } from '../../utils/finance'
 
@@ -44,6 +45,7 @@ const parseJsonParam = <T,>(value?: string): T | null => {
 export default function WowMomentScreen() {
   const router = useRouter()
   const { user } = useAuth()
+  const { currency } = useCurrency()
   const params = useLocalSearchParams()
 
   const initialSummary = useMemo(
@@ -69,7 +71,9 @@ export default function WowMomentScreen() {
   const loadSummary = useCallback(async () => {
     if (!user?.id) return
     try {
-      const response = await fetch(chatApiUrl(`/api/sync-financial-summary/${user.id}`))
+      const response = await fetch(chatApiUrl(`/api/sync-financial-summary/calculate`), {
+        body: JSON.stringify({ userId: user.id })
+      })
       const data = await response.json().catch(() => null)
       if (data?.success && data?.summary) {
         setSummary(data.summary as SummaryData)
@@ -111,13 +115,13 @@ export default function WowMomentScreen() {
     const categories = summary?.top_categories ?? []
     return categories.slice(0, 3).map((category) => ({
       label: humanizeLabel(category.category),
-      value: formatCurrency(category.amount ?? 0),
+      value: formatCurrency(category.amount ?? 0, currency),
       change:
         typeof category.percentage === 'number'
           ? `${category.percentage.toFixed(1)}%`
           : undefined,
     }))
-  }, [summary?.top_categories])
+  }, [currency, summary?.top_categories])
 
   const insightText =
     insights?.ai_summary ??
@@ -142,7 +146,7 @@ export default function WowMomentScreen() {
             <ActivityIndicator size="small" color={theme.colors.accent} />
           ) : (
             <Text style={styles.cardValue}>
-              {hasSummary && totalBalance !== null ? formatCurrency(totalBalance) : '--'}
+              {hasSummary && totalBalance !== null ? formatCurrency(totalBalance, currency) : '--'}
             </Text>
           )}
           <Text style={styles.cardMeta}>
@@ -159,7 +163,7 @@ export default function WowMomentScreen() {
           ) : (
             <Text style={styles.sectionValue}>
               {hasSummary && monthlySpending !== null
-                ? formatCurrency(monthlySpending)
+                ? formatCurrency(monthlySpending, currency)
                 : '--'}
             </Text>
           )}

@@ -17,6 +17,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { theme as appTheme } from '../constants/theme'
 import { APP_VERSION_NUMBER } from '../constants/appVersion'
 import { AuthProvider } from '../contexts/AuthContext'
+import { CurrencyProvider } from '../contexts/CurrencyContext'
 import { useScreenTracking } from '../hooks/useScreenTracking'
 import { initTelemetry } from '../lib/telemetry'
 import { supabase } from '../lib/supabase'
@@ -178,33 +179,35 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
         <AuthProvider>
-          <PaperProvider theme={paperTheme}>
-            <Modal
-              animationType="fade"
-              transparent
-              visible={isOutdated}
-              onRequestClose={() => undefined}
-            >
-              <View style={styles.updateOverlay}>
-                <View style={styles.updateCard}>
-                  <Text style={styles.updateTitle}>Your version is outdated</Text>
-                  <Text style={styles.updateBody}>
-                    Please update it on the app store to continue.
-                  </Text>
-                  <Pressable style={styles.updateButton} onPress={handleUpdatePress}>
-                    <Text style={styles.updateButtonText}>Update</Text>
-                  </Pressable>
+          <CurrencyProvider>
+            <PaperProvider theme={paperTheme}>
+              <Modal
+                animationType="fade"
+                transparent
+                visible={isOutdated}
+                onRequestClose={() => undefined}
+              >
+                <View style={styles.updateOverlay}>
+                  <View style={styles.updateCard}>
+                    <Text style={styles.updateTitle}>Your version is outdated</Text>
+                    <Text style={styles.updateBody}>
+                      Please update it on the app store to continue.
+                    </Text>
+                    <Pressable style={styles.updateButton} onPress={handleUpdatePress}>
+                      <Text style={styles.updateButtonText}>Update</Text>
+                    </Pressable>
+                  </View>
                 </View>
-              </View>
-            </Modal>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="(settings)" />
-              <Stack.Screen name="assistant" options={{ presentation: 'modal' }} />
-            </Stack>
-          </PaperProvider>
+              </Modal>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="(settings)" />
+                <Stack.Screen name="assistant" options={{ presentation: 'modal' }} />
+              </Stack>
+            </PaperProvider>
+          </CurrencyProvider>
         </AuthProvider>
       </View>
     </SafeAreaProvider>

@@ -5,6 +5,7 @@ import { DatePickerModal } from 'react-native-paper-dates'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { theme } from '../../constants/theme'
 import { useAuth } from '../../contexts/AuthContext'
+import { useCurrency } from '../../contexts/CurrencyContext'
 import { usePlaidData } from '../../hooks/usePlaidData'
 import { useBudget } from '../../hooks/useBudget'
 import {
@@ -66,6 +67,7 @@ const getRelativeLabel = (date: Date | null) => {
 
 export default function ExpensesScreen() {
   const { user, status } = useAuth()
+  const { currency: userCurrency, source: currencySource } = useCurrency()
   const { transactions, recurring, loading, error } = usePlaidData(user?.id)
   const { budget, loading: budgetLoading, saveBudget } = useBudget(user?.id)
   const [activeFilter, setActiveFilter] = useState('all')
@@ -114,9 +116,13 @@ export default function ExpensesScreen() {
     })
   }, [recurring])
 
-  const currency =
+  const inferredCurrency =
     normalizedTransactions.find((transaction) => transaction.currency)?.currency ??
-    'USD'
+    null
+  const currency =
+    currencySource === 'default' || currencySource === 'unknown'
+      ? inferredCurrency ?? userCurrency
+      : userCurrency
 
   const {
     groupedTransactions,

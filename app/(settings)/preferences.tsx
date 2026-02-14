@@ -10,7 +10,6 @@ import { supabase } from '../../lib/supabase'
 
 type PreferencesRow = {
   user_id: string
-  currency: string
   tax_year_start_month: number
   notifications_enabled: boolean
   face_id_enabled: boolean
@@ -18,13 +17,11 @@ type PreferencesRow = {
 
 const defaultPrefs: PreferencesRow = {
   user_id: '',
-  currency: 'USD',
   tax_year_start_month: 1,
   notifications_enabled: true,
   face_id_enabled: false,
 }
 
-const currencies = ['USD', 'CAD', 'EUR', 'GBP']
 const months = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
@@ -42,7 +39,7 @@ export default function PreferencesScreen() {
       try {
         const { data, error } = await supabase
           .from('user_preferences')
-          .select('user_id, currency, tax_year_start_month, notifications_enabled, face_id_enabled')
+          .select('user_id, tax_year_start_month, notifications_enabled, face_id_enabled')
           .eq('user_id', user.id)
           .maybeSingle()
 
@@ -50,7 +47,6 @@ export default function PreferencesScreen() {
         if (data) {
           setPrefs({
             user_id: data.user_id,
-            currency: data.currency ?? 'USD',
             tax_year_start_month: Number(data.tax_year_start_month ?? 1),
             notifications_enabled: Boolean(data.notifications_enabled),
             face_id_enabled: Boolean(data.face_id_enabled),
@@ -73,11 +69,21 @@ export default function PreferencesScreen() {
       if (!user?.id) return
       setPrefs(next)
       const payload = { ...next, user_id: user.id, updated_at: new Date().toISOString() }
-      const { error } = await supabase
+      const { data: updated, error: updateError } = await supabase
         .from('user_preferences')
-        .upsert(payload, { onConflict: 'user_id' })
-      if (error) {
-        throw error
+        .update(payload)
+        .eq('user_id', user.id)
+        .select('user_id')
+      if (updateError) {
+        throw updateError
+      }
+      if (!updated || updated.length === 0) {
+        const { error: insertError } = await supabase
+          .from('user_preferences')
+          .insert(payload)
+        if (insertError) {
+          throw insertError
+        }
       }
     },
     [user?.id],
@@ -127,32 +133,6 @@ export default function PreferencesScreen() {
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Preferences</Text>
         <Text style={styles.subtitle}>Control how KeepMore personalizes your experience.</Text>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Currency</Text>
-          <View style={styles.chipRow}>
-            {currencies.map((currency) => (
-              <Chip
-                key={currency}
-                selected={prefs.currency === currency}
-                onPress={async () => {
-                  try {
-                    await savePreferences({ ...prefs, currency })
-                  } catch (err) {
-                    Alert.alert('Update failed', err instanceof Error ? err.message : 'Try again.')
-                  }
-                }}
-                style={[styles.chip, prefs.currency === currency && styles.chipSelected]}
-                textStyle={[
-                  styles.chipText,
-                  prefs.currency === currency && styles.chipTextSelected,
-                ]}
-              >
-                {currency}
-              </Chip>
-            ))}
-          </View>
-        </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Tax year start</Text>
