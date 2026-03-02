@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import { ScrollView, StatusBar, StyleSheet, View } from 'react-native'
