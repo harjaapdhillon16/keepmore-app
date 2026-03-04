@@ -193,15 +193,14 @@ export default function PaywallScreen() {
 
           <View style={styles.primaryPlan}>
             <View style={styles.planHeader}>
-              <Text style={[styles.planName, styles.planNameInverse]}>Yearly</Text>
+              <Text style={styles.planName}>Yearly</Text>
               <View style={styles.saveBadge}>
                 <Text style={styles.saveBadgeText}>SAVE 24%</Text>
               </View>
             </View>
-            <Text style={[styles.planPrice, styles.planPriceInverse]}>
-              $9.91 <Text style={[styles.planPriceMuted, styles.planPriceMutedInverse]}>($119.00/yr)</Text>
-            </Text>
-            <Text style={[styles.planDetail, styles.planDetailInverse]}>per month, billed annually</Text>
+            <Text style={styles.planPrice}>$119.00/year</Text>
+            <Text style={styles.planDetail}>Billed annually</Text>
+            <Text style={styles.planSubDetail}>Equivalent to $9.91/month</Text>
           </View>
 
           <View style={styles.secondaryPlan}>
@@ -209,6 +208,7 @@ export default function PaywallScreen() {
             <Text style={styles.planPrice}>
               $12.99 <Text style={styles.planPriceMuted}>/month</Text>
             </Text>
+            <Text style={styles.planDetail}>Billed monthly</Text>
           </View>
         </View>
 
@@ -365,7 +365,9 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
   },
   primaryPlan: {
-    backgroundColor: '#0f172a',
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     borderRadius: 12,
     padding: 12,
     gap: 4,
@@ -398,33 +400,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.ink,
   },
-  planNameInverse: {
-    color: '#f8fafc',
-  },
   planPrice: {
     fontFamily: theme.fonts.display.regular,
     fontSize: 28,
     color: theme.colors.ink,
     lineHeight: 32,
   },
-  planPriceInverse: {
-    color: '#f8fafc',
-  },
   planPriceMuted: {
     fontFamily: theme.fonts.body.regular,
     fontSize: 16,
     color: theme.colors.muted,
-  },
-  planPriceMutedInverse: {
-    color: '#cbd5e1',
   },
   planDetail: {
     fontFamily: theme.fonts.body.regular,
     fontSize: 13,
     color: theme.colors.mutedLight,
   },
-  planDetailInverse: {
-    color: '#cbd5e1',
+  planSubDetail: {
+    fontFamily: theme.fonts.body.regular,
+    fontSize: 12,
+    color: theme.colors.mutedLight,
   },
   disclaimerText: {
     fontFamily: theme.fonts.body.regular,
