@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
-import { useFonts } from 'expo-font'
+import { useCallback, useEffect, useState } from 'react'
 import {
   AppState,
   Linking,
@@ -14,17 +14,17 @@ import {
 } from 'react-native'
 import { configureFonts, MD3LightTheme, PaperProvider } from 'react-native-paper'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { theme as appTheme } from '../constants/theme'
 import { APP_VERSION_NUMBER } from '../constants/appVersion'
+import { theme as appTheme } from '../constants/theme'
 import { AuthProvider } from '../contexts/AuthContext'
 import { CurrencyProvider } from '../contexts/CurrencyContext'
 import { useScreenTracking } from '../hooks/useScreenTracking'
-import { initTelemetry } from '../lib/telemetry'
 import { supabase } from '../lib/supabase'
+import { initTelemetry } from '../lib/telemetry'
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined)
 
-const APP_STORE_URL = 'https://apps.apple.com/app/id0000000000'
+const APP_STORE_URL = 'https://apps.apple.com/in/app/keepmore-finance/id6758236819'
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.priyanshukumar18.keepmore'
 
 const fontConfig = {

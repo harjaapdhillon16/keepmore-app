@@ -1,10 +1,10 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
-import { Platform } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import type { Session, User } from '@supabase/supabase-js'
 import * as AppleAuthentication from 'expo-apple-authentication'
 import * as Crypto from 'expo-crypto'
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
+import { Platform } from 'react-native'
 import Purchases, { LOG_LEVEL } from 'react-native-purchases'
-import type { Session, User } from '@supabase/supabase-js'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from '../lib/supabase'
 import {
   logError,
@@ -47,9 +47,9 @@ const fallbackRevenueCatAndroidKey = 'test_gzYNdApzdBtQNVUTEcWnHiBhVMz'
 const cachedUserKey = 'keepmore:cached-user'
 
 const revenueCatIosKey =
-  env?.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY || fallbackRevenueCatIosKey
+  fallbackRevenueCatIosKey
 const revenueCatAndroidKey =
-  env?.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY || fallbackRevenueCatAndroidKey
+  fallbackRevenueCatAndroidKey
 
 const getRevenueCatKey = () => {
   if (Platform.OS === 'ios') return revenueCatIosKey
@@ -121,13 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // -----------------------------
   useEffect(() => {
     const apiKey = getRevenueCatKey()
-
-    if (!apiKey) {
-      console.warn(
-        'Missing RevenueCat API key. Set EXPO_PUBLIC_REVENUECAT_IOS_API_KEY or EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY.',
-      )
-      return
-    }
 
     if (__DEV__) {
       Purchases.setLogLevel(LOG_LEVEL.VERBOSE)

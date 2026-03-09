@@ -109,7 +109,7 @@ export default function LoginScreen() {
             contentStyle={styles.buttonContent}
             labelStyle={styles.secondaryLabel}
             icon={() => <Ionicons name="mail-outline" size={18} color={theme.colors.ink} />}
-            onPress={() => router.push('/(auth)/email')}
+            onPress={() => router.replace('/(auth)/email')}
             disabled={isWorking || isRouting}
           >
             Continue with Email
@@ -124,7 +124,7 @@ export default function LoginScreen() {
               icon={() => (
                 <Ionicons name="lock-closed-outline" size={18} color={theme.colors.ink} />
               )}
-              onPress={() => router.push('/(auth)/password')}
+              onPress={() => router.replace('/(auth)/password')}
               disabled={isWorking || isRouting}
             >
               Continue with Password

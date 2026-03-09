@@ -77,7 +77,7 @@ export default function AppIndexScreen() {
           style={styles.primaryButton}
           contentStyle={styles.buttonContent}
           labelStyle={styles.primaryLabel}
-          onPress={() => router.push('/(auth)/login')}
+          onPress={() => router.replace('/(auth)/login')}
         >
           Get Started Free
         </Button>
